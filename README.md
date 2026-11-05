@@ -43,36 +43,32 @@ git clone https://github.com/lucarmendariz/GargantuaProject.git
 cd GargantuaProject
 ```
 
-### 2. Base de datos
+### 2. Secretos y base de datos
 
-Con Docker:
-
-```bash
-docker run --name mariadb-gargantua -e MARIADB_ROOT_PASSWORD=<tu_clave> -e MARIADB_DATABASE=<nombre_bd> -p 127.0.0.1:3307:3306 -d mariadb:lts
-```
-
-Después, carga o actualiza las tablas con los scripts de `trazabilidad-api/database`:
+Copia la plantilla y sustituye cada valor (puedes generarlos con `openssl rand -hex 32`):
 
 ```bash
 cd trazabilidad-api/database
+cp .env.example .env
+```
+
+`.env` no se sube al repositorio. Después crea la base de datos con sus tablas y datos de prueba:
+
+```bash
 bash update_db.sh
 ```
 
-> En Windows, ejecuta el script desde **Git Bash**, no desde PowerShell. Si da errores de `\r`, convierte el archivo a finales de línea LF.
+> `update_db.sh` **borra la base de datos** y la crea de nuevo. Para arrancarla sin perder datos usa `bash init_db.sh`.
+>
+> En Windows, ejecuta los scripts desde **Git Bash**. Si dan errores de `\r`, convierte el archivo a finales de línea LF.
+
+Usuario de prueba: `luca` / `moncorp2026`. Es público, así que no lo uses fuera de desarrollo.
 
 ### 3. Backend
 
 1. Abre la carpeta `trazabilidad-api` en **IntelliJ IDEA** (no la raíz del repositorio).
 2. Activa el procesamiento de anotaciones para Lombok: *Settings → Build, Execution, Deployment → Compiler → Annotation Processors → Enable annotation processing*.
-3. Configura la conexión en `src/main/resources/application.properties`:
-
-   ```properties
-   spring.datasource.url=jdbc:mariadb://localhost:3307/<nombre_bd>
-   spring.datasource.username=<usuario>
-   spring.datasource.password=<contraseña>
-   ```
-
-4. Arranca la aplicación desde IntelliJ o por terminal:
+3. Arranca la aplicación desde IntelliJ o por terminal. La configuración se lee de `database/.env`, con `trazabilidad-api` como directorio de trabajo:
 
    ```bash
    cd trazabilidad-api
@@ -80,6 +76,14 @@ bash update_db.sh
    ```
 
    En Windows: `gradlew.bat bootRun`. La API queda disponible en `http://localhost:8080`.
+
+La API exige un token JWT, que se obtiene en `POST /api/auth/login` y caduca a las 8 horas:
+
+| Rol | Acceso |
+|-----|--------|
+| `ADMIN` | Todo |
+| `ENCARGADO` | Productos, lotes y estado de lotes |
+| `OPERARIO` | Registrar movimientos de producción y consultar el estado de lotes |
 
 ### 4. Frontend
 
@@ -107,7 +111,7 @@ bash update_db.sh
 ## Problemas frecuentes
 
 - **Puerto ocupado:** cambia `server.port` en el backend o el puerto del servidor de desarrollo del frontend.
-- **Error de conexión a la base de datos:** comprueba que MariaDB está arrancada y que URL, usuario, contraseña y nombre de la base coinciden con `application.properties`.
+- **Error de conexión a la base de datos o `Could not resolve placeholder`:** comprueba que MariaDB está arrancada, que existe `database/.env` y que el directorio de trabajo del backend es `trazabilidad-api`.
 - **Versión de Java incorrecta:** comprueba con `java -version` que tienes la 17.
 - **`mariadb: command not found` en `update_db.sh`:** instala el cliente de MariaDB o ejecuta los `.sql` dentro del contenedor de Docker.
 
@@ -232,8 +236,11 @@ Nunca subas archivos `.env` con datos reales. Copia la plantilla y rellénala:
 ## Tests
 
 ```bash
-# ⚠️ COMPLETAR: comando para lanzar los tests de la API
-# ⚠️ COMPLETAR: comando para lanzar los tests del frontend (si existen)
+# Backend: necesita Docker, levanta su propia MariaDB temporal
+cd trazabilidad-api && ./gradlew test
+
+# Frontend
+cd GargantAppFront/gargantapp-front && npm test
 ```
 
 ## Hoja de ruta
