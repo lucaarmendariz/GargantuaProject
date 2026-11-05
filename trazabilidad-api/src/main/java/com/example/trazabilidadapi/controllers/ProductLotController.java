@@ -73,10 +73,14 @@ public class ProductLotController {
     // 3.3 TRACEABILITY ENGINE: Consultar el estado actual y OCR de un lote por su código de barras
     @GetMapping("/estado/{lotNumber}")
     public ResponseEntity<CurrentLotStatus> getCurrentStatus(@PathVariable String lotNumber) {
-        CurrentLotStatus status = service.getCurrentLotStatus(lotNumber);
-        if (status == null) {
+        try {
+            CurrentLotStatus status = service.getCurrentLotStatus(lotNumber);
+            if (status == null) {
+                return ResponseEntity.notFound().build();
+            }
+            return ResponseEntity.ok(status);
+        } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.ok(status);
     }
 }

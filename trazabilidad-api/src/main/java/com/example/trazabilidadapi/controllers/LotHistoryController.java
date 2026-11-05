@@ -2,6 +2,7 @@ package com.example.trazabilidadapi.controllers;
 
 import com.example.trazabilidadapi.models.LotHistory;
 import com.example.trazabilidadapi.services.LotHistoryService;
+import com.example.trazabilidadapi.services.ProductLotService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -13,13 +14,18 @@ import java.util.List;
 public class LotHistoryController {
 
     private final LotHistoryService service;
+    private final ProductLotService lotService;
 
-    public LotHistoryController(LotHistoryService service) {
+    public LotHistoryController(LotHistoryService service, ProductLotService lotService) {
         this.service = service;
+        this.lotService = lotService;
     }
 
     @GetMapping("/lote/{lotId}")
     public ResponseEntity<List<LotHistory>> getByLotId(@PathVariable int lotId) {
+        if (lotService.getLotById(lotId) == null) {
+            return ResponseEntity.notFound().build();
+        }
         return ResponseEntity.ok(service.getHistoryByLot(lotId));
     }
 

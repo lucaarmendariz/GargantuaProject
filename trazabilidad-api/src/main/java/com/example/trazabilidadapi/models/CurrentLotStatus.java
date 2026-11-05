@@ -3,8 +3,6 @@ package com.example.trazabilidadapi.models;
 import lombok.*;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
 
 @Builder
 @Data
@@ -16,11 +14,11 @@ public class CurrentLotStatus {
     private String productName;
     private int lotId;
     private String lotNumber;
-    private Integer initialQuantity;
+    private BigDecimal initialQuantity;
     private String measureUnit;
     private Long expirationDate;
     private String currentState;
-    private LocalDateTime lastUpdate;
+    private Long lastUpdate;
     private String lastOperator;
     private String ocrRawText;
     private String lastObservations;

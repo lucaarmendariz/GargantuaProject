@@ -48,7 +48,7 @@ public class ProductController {
         try {
             Integer newId = service.insertProduct(product);
             return ResponseEntity.status(HttpStatus.CREATED).body(newId); // Devuelve HTTP 201
-        } catch (SQLException e) {
+        } catch (SQLException | RuntimeException e) {
             // Si el procedimiento lanza el error 102 (SKU duplicado), enviamos un HTTP 400 Bad Request
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body("Error al registrar el producto: Comprueba que el código SKU no esté duplicado.");

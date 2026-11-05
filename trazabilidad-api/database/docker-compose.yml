@@ -11,7 +11,7 @@ services:
       MARIADB_USER: trazabilidad_app
       MARIADB_PASSWORD: MonCorpPass2026!
     ports:
-      - "3307:3306"
+      - "127.0.0.1:3307:3306"
     volumes:
       - db_data:/var/lib/mysql
 

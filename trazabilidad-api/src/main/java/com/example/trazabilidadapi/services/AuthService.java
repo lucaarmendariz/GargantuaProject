@@ -3,10 +3,13 @@ package com.example.trazabilidadapi.services;
 import com.example.trazabilidadapi.models.AppUser;
 import com.example.trazabilidadapi.models.LoginResponse;
 import com.example.trazabilidadapi.repositories.UserRepository;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
 public class AuthService {
+
+    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     private final UserRepository userRepository;
 
@@ -22,9 +25,8 @@ public class AuthService {
             throw new IllegalArgumentException("Usuario o contraseña incorrectos.");
         }
 
-        // 2. Validar la contraseña (Comparación directa por ahora)
-        // NOTA: Si en el futuro usas BCrypt, aquí usarías encoder.matches(password, user.getPasswordHash())
-        if (!user.getPasswordHash().equals(password)) {
+        // 2. Validar la contraseña contra su hash BCrypt
+        if (password == null || !passwordEncoder.matches(password, user.getPasswordHash())) {
             throw new IllegalArgumentException("Usuario o contraseña incorrectos.");
         }
 

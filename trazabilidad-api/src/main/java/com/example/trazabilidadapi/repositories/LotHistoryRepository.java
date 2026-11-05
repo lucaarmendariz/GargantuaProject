@@ -9,6 +9,7 @@ import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -24,14 +25,12 @@ public class LotHistoryRepository {
 
     public List<LotHistory> findByLotId(int lotId) {
         List<LotHistory> list = new ArrayList<>();
-        try {
-            Connection conn = Objects.requireNonNull(jdbcTemplate.getDataSource()).getConnection();
-            try (CallableStatement stmt = conn.prepareCall("{call LotHistory_FindByLotId(?)}")) {
-                stmt.setInt(1, lotId);
-                try (ResultSet rs = stmt.executeQuery()) {
-                    while (rs.next()) {
-                        list.add(ResultSetMapper.getLotHistoryFromResultSet(rs));
-                    }
+        try (Connection conn = Objects.requireNonNull(jdbcTemplate.getDataSource()).getConnection();
+             CallableStatement stmt = conn.prepareCall("{call LotHistory_FindByLotId(?)}")) {
+            stmt.setInt(1, lotId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    list.add(ResultSetMapper.getLotHistoryFromResultSet(rs));
                 }
             }
         } catch (SQLException e) {
@@ -41,19 +40,18 @@ public class LotHistoryRepository {
     }
 
     public int insertLotHistory(LotHistory history) {
-        try {
-            Connection conn = Objects.requireNonNull(jdbcTemplate.getDataSource()).getConnection();
-            try (CallableStatement stmt = conn.prepareCall("{call LotHistory_Insert(?, ?, ?, ?, ?, ?)}")) {
-                stmt.setInt(1, history.getLotId());
-                stmt.setString(2, history.getActionType());
-                stmt.setString(3, history.getOperator());
-                stmt.setBigDecimal(4, history.getQuantityAffected());
-                stmt.setString(5, history.getOcrRawText());
-                stmt.setString(6, history.getObservations());
+        try (Connection conn = Objects.requireNonNull(jdbcTemplate.getDataSource()).getConnection();
+             CallableStatement stmt = conn.prepareCall("{call LotHistory_Insert(?, ?, ?, ?, ?, ?, ?)}")) {
+            stmt.setInt(1, history.getLotId());
+            stmt.setString(2, history.getActionType());
+            stmt.setString(3, history.getOperator());
+            stmt.setBigDecimal(4, history.getQuantityAffected());
+            stmt.setString(5, history.getOcrRawText());
+            stmt.setString(6, history.getObservations());
+            stmt.registerOutParameter(7, Types.INTEGER);
 
-                stmt.execute();
-                return 1;
-            }
+            stmt.execute();
+            return stmt.getInt(7);
         } catch (SQLException e) {
             throw new RuntimeException("Error al guardar registro en el historial", e);
         }
