@@ -9,7 +9,6 @@ import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/api/trazabilidad")
-@CrossOrigin(origins = "*")
 public class LotTrazabilityController {
 
     private final LotTrazabilityService service;

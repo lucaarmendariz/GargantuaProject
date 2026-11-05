@@ -11,7 +11,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/productos")
-@CrossOrigin(origins = "*") // Permite la comunicación nativa con tu servidor de Vue 3
 public class ProductController {
 
     private final ProductService service;

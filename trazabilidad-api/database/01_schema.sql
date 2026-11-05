@@ -57,7 +57,7 @@ CREATE TABLE app_user (
           username VARCHAR(50) UNIQUE NOT NULL,
           password_hash VARCHAR(255) NOT NULL, -- Guardaremos las contraseñas cifradas
           name VARCHAR(100) NOT NULL,
-          role VARCHAR(50) NOT NULL DEFAULT 'OPERATOR', -- OPERATOR, ADMIN, QUALITY
+          role VARCHAR(50) NOT NULL DEFAULT 'OPERARIO', -- OPERARIO, ENCARGADO, ADMIN
           is_active TINYINT(1) DEFAULT 1 NOT NULL,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;

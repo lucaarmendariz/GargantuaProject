@@ -3,18 +3,20 @@ package com.example.trazabilidadapi.services;
 import com.example.trazabilidadapi.models.AppUser;
 import com.example.trazabilidadapi.models.LoginResponse;
 import com.example.trazabilidadapi.repositories.UserRepository;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
 public class AuthService {
 
-    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
-
+    private final PasswordEncoder passwordEncoder;
     private final UserRepository userRepository;
+    private final JwtService jwtService;
 
-    public AuthService(UserRepository userRepository) {
+    public AuthService(PasswordEncoder passwordEncoder, UserRepository userRepository, JwtService jwtService) {
+        this.passwordEncoder = passwordEncoder;
         this.userRepository = userRepository;
+        this.jwtService = jwtService;
     }
 
     public LoginResponse authenticate(String username, String password) {
@@ -35,7 +37,8 @@ public class AuthService {
                 user.getUsername(),
                 user.getName(),
                 user.getRole(),
-                "¡Autenticación en MonCorp exitosa!"
+                "¡Autenticación en MonCorp exitosa!",
+                jwtService.issueToken(user)
         );
     }
 }
