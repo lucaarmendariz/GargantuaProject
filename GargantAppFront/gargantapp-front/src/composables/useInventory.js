@@ -51,7 +51,7 @@ const updateProduct = async (productData) => {
     await apiClient.put(`/productos/${productData.productId}`, productData);
     await loadProducts();
   } catch (error) {
-    // 🔍 ESTO NOS VA A CHIVAR EL ERROR REAL EN LA CONSOLA F12:
+    // ESTO NOS VA A CHIVAR EL ERROR REAL EN LA CONSOLA F12:
     console.error("Fallo crítico en el PUT:", error);
     alert(`Error al actualizar la ficha: ${error.status ? `HTTP ${error.status}` : error.message}`);
   }

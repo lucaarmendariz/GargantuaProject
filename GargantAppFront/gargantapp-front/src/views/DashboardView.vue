@@ -135,27 +135,27 @@ const logout = () => {
 </script>
 
 <template>
-  <div v-if="user" class="dashboard">
-    <header>
+  <div v-if="user" class="content">
+    <header class="card-header">
       <div class="brand-title">
-        <h1>🏭 Panel Central</h1>
+        <h1>Panel Central</h1>
         <p>Planta Gargantúa Tortillas</p>
       </div>
       <div class="user-badge">
-        <span>👷‍♂️ <strong>{{ user.name }}</strong></span>
+        <strong>{{ user.name }}</strong>
         <button @click="logout" class="btn-logout">Salir</button>
       </div>
     </header>
 
-    <main class="dashboard-grid">
+    <main class="card-body">
 
       <section class="control-panel">
 
-        <div class="full-calendar-widget">
+        <div class="full-calendar-widget panel">
           <div class="cal-nav">
-            <button @click="prevMonth" class="cal-nav-btn">◀</button>
+            <button @click="prevMonth" class="cal-nav-btn">Anterior</button>
             <span class="cal-title"><strong>{{ currentMonthName }}</strong> {{ currentYear }}</span>
-            <button @click="nextMonth" class="cal-nav-btn">▶</button>
+            <button @click="nextMonth" class="cal-nav-btn">Siguiente</button>
           </div>
           
           <div class="cal-weekdays">
@@ -181,34 +181,31 @@ const logout = () => {
 
         <div class="operations-menu">
           <button @click="navigateTo('/inventario')" class="menu-btn btn-inventario">
-            <span class="icon">📊</span>
             <span class="text">Inventario Stock</span>
           </button>
 
           <button @click="navigateTo('/historial-global')" class="menu-btn btn-historial">
-            <span class="icon">📜</span>
             <span class="text">Historial Visibilizar</span>
           </button>
 
           <button @click="navigateTo('/produccion')" class="menu-btn btn-produccion">
-            <span class="icon">🏗️</span>
             <span class="text">Producción Planta</span>
           </button>
         </div>
 
       </section>
 
-      <section class="search-section">
+      <section class="search-section panel">
         <h3>Simulador de Cámara OCR de Planta</h3>
-        <div class="search-bar">
+        <div class="input-row">
           <input v-model="lotInput" placeholder="Introduce o escanea un número de lote..." @keyup.enter="searchLot" />
           <button @click="searchLot">Escanear Lote</button>
         </div>
-        <p v-if="errorMsg" class="error-text">{{ errorMsg }}</p>
+        <p v-if="errorMsg" class="msg-error">{{ errorMsg }}</p>
       </section>
 
-      <section v-if="lotData" class="result-card">
-        <h3>📋 Información de Trazabilidad del Lote</h3>
+      <section v-if="lotData" class="result-card panel">
+        <h3>Información de Trazabilidad del Lote</h3>
         <div class="table-responsive">
           <table class="info-table">
             <tbody>
@@ -254,95 +251,62 @@ const logout = () => {
 </template>
 
 <style scoped>
-.dashboard {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background-color: var(--gargantua-gold);
-  padding: 15px 25px;
-  color: var(--gargantua-dark);
-}
-
-.brand-title h1 {
-  margin: 0;
-  font-size: 1.4rem;
-}
-
 .brand-title p {
-  margin: 0;
-  font-size: 0.8rem;
-  opacity: 0.85;
-  font-weight: bold;
+  color: var(--gargantua-gold);
+  font-size: 0.85rem;
+  font-weight: 600;
 }
 
 .user-badge {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 15px;
+  gap: 8px 16px;
+  min-width: 0;
 }
 
 .btn-logout {
-  background: var(--gargantua-danger);
-  color: var(--gargantua-white);
-  border: none;
-  padding: 6px 12px;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  font-weight: bold;
-  -webkit-appearance: none;
-  appearance: none;
+  background: transparent;
+  border-color: var(--gargantua-gold);
+  color: var(--gargantua-cream);
 }
 
-.dashboard-grid {
-  padding: 25px;
-  display: flex;
-  flex-direction: column;
-  gap: 25px;
+.btn-logout:hover {
+  background: var(--gargantua-gold);
+  color: var(--gargantua-dark);
 }
 
-/* PANEL SUPERIOR */
 .control-panel {
-  display: flex;
-  gap: 20px;
-  align-items: stretch;
+  display: grid;
+  gap: clamp(16px, 3vw, 24px);
+  grid-template-columns: minmax(0, 1fr);
 }
 
-/* 🎨 NUEVOS ESTILOS PARA EL CALENDARIO COMPLETO MATRICIAL */
+@media (min-width: 860px) {
+  .control-panel {
+    grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
+  }
+}
+
+/* Calendario */
 .full-calendar-widget {
-  background: var(--gargantua-white);
-  border: 2px solid var(--gargantua-border);
-  border-radius: var(--radius-md);
-  width: 280px;
-  display: flex;
-  flex-direction: column;
-  padding: 12px;
-  box-shadow: 0 4px 10px rgba(62, 39, 18, 0.05);
-  flex-shrink: 0;
   user-select: none;
 }
 
 .cal-nav {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 
 .cal-nav-btn {
-  background: var(--gargantua-cream);
-  border: 1px solid var(--gargantua-border);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
   padding: 4px 10px;
-  font-size: 0.8rem;
-  font-weight: bold;
-  transition: var(--transition);
+  background: var(--gargantua-cream);
+  border-color: var(--gargantua-border);
+  color: var(--gargantua-dark);
+  font-size: 0.85rem;
 }
 
 .cal-nav-btn:hover {
@@ -351,38 +315,42 @@ header {
 
 .cal-title {
   color: var(--gargantua-dark);
-  font-size: 0.95rem;
+  text-align: center;
+}
+
+/* En las pantallas mas pequenas el mes pasa encima de los botones */
+@media (max-width: 340px) {
+  .cal-nav {
+    flex-wrap: wrap;
+  }
+
+  .cal-title {
+    flex: 1 1 100%;
+    order: -1;
+  }
+}
+
+.cal-weekdays,
+.cal-days-grid {
+  display: grid;
+  gap: 4px;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
 }
 
 .cal-weekdays {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  text-align: center;
-  font-weight: bold;
-  font-size: 0.75rem;
-  color: var(--gargantua-orange);
   margin-bottom: 6px;
-}
-
-.cal-days-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
+  color: var(--gargantua-orange);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-align: center;
 }
 
 .day-cell {
+  min-height: 40px;
+  padding: 0;
   background: var(--gargantua-cream);
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
-  padding: 6px 0;
-  font-size: 0.85rem;
-  font-weight: bold;
   color: var(--gargantua-dark);
-  cursor: pointer;
-  text-align: center;
-  transition: var(--transition);
-  -webkit-appearance: none;
-  appearance: none;
+  font-size: 0.875rem;
 }
 
 .day-cell:hover {
@@ -390,134 +358,54 @@ header {
 }
 
 .outside-month {
-  color: #b9bec5;
   background: transparent;
+  color: #8a7d6e;
+  font-weight: 400;
 }
 
 .today-cell {
-  border: 2px solid var(--gargantua-orange) !important;
+  border: 2px solid var(--gargantua-orange);
 }
 
-.selected-cell {
-  background: var(--gargantua-dark) !important;
-  color: var(--gargantua-gold) !important;
+.selected-cell,
+.selected-cell:hover {
+  background: var(--gargantua-dark);
+  color: var(--gargantua-gold);
 }
 
-/* BOTONERA DE OPERACIONES */
+/* Accesos a las secciones */
 .operations-menu {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 15px;
-  flex-grow: 1;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
 }
 
 .menu-btn {
+  min-height: 72px;
+  padding: 16px;
   background: var(--gargantua-white);
-  border: 2px solid var(--gargantua-border);
+  border-color: var(--gargantua-border);
   border-radius: var(--radius-md);
-  padding: 15px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  cursor: pointer;
-  transition: var(--transition);
-  -webkit-appearance: none;
-  appearance: none;
-}
-
-.menu-btn .icon {
-  font-size: 1.8rem;
-}
-
-.menu-btn .text {
-  font-weight: bold;
+  box-shadow: var(--shadow-sm);
   color: var(--gargantua-dark);
-  font-size: 0.9rem;
-  text-align: center;
 }
 
 .menu-btn:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 6px 12px rgba(230, 126, 34, 0.12);
-  border-color: var(--gargantua-gold);
-  background-color: #fffdf9;
-}
-
-/* SECCIÓN BUSCADOR / OCR */
-.search-section {
   background: var(--gargantua-white);
-  border: 1px solid var(--gargantua-border);
-  padding: 20px;
-  border-radius: var(--radius-md);
+  border-color: var(--gargantua-orange);
+  color: var(--gargantua-orange-dark);
 }
 
-.search-section h3 {
-  margin-top: 0;
-  color: var(--gargantua-dark);
+.search-section h3,
+.result-card h3 {
   margin-bottom: 12px;
 }
 
-.search-bar {
-  display: flex;
-  gap: 12px;
+.msg-error {
+  margin-top: 12px;
 }
 
-.search-bar input {
-  flex: 1;
-  padding: 12px;
-  border: 1px solid var(--gargantua-border);
-  border-radius: var(--radius-sm);
-  font-size: 16px;
-  background-color: var(--gargantua-cream);
-  color: var(--gargantua-dark);
-  -webkit-appearance: none;
-  appearance: none;
-}
-
-.search-bar button {
-  padding: 12px 20px;
-  background: var(--gargantua-orange);
-  color: var(--gargantua-white);
-  border: none;
-  border-radius: var(--radius-sm);
-  font-weight: bold;
-  cursor: pointer;
-  transition: var(--transition);
-  -webkit-appearance: none;
-  appearance: none;
-}
-
-.search-bar button:hover {
-  background: var(--gargantua-dark);
-}
-
-.error-text {
-  color: var(--gargantua-danger);
-  font-weight: bold;
-  margin-top: 10px;
-  margin-bottom: 0;
-}
-
-/* SECCIÓN RESULTADOS */
-.result-card {
-  background: var(--gargantua-white);
-  border: 1px solid var(--gargantua-border);
-  padding: 20px;
-  border-radius: var(--radius-md);
-}
-
-.result-card h3 {
-  margin-top: 0;
-  color: var(--gargantua-dark);
-}
-
-.table-responsive {
-  width: 100%;
-  overflow-x: auto;
-}
-
+/* Datos del lote */
 .info-table {
   width: 100%;
   border-collapse: collapse;
@@ -525,82 +413,67 @@ header {
 
 .info-table th,
 .info-table td {
-  text-align: left;
   padding: 12px;
   border-bottom: 1px solid var(--gargantua-border);
   font-size: 0.95rem;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+
+.info-table tr:last-child th,
+.info-table tr:last-child td {
+  border-bottom: 0;
 }
 
 .info-table th {
-  background: var(--gargantua-cream);
   width: 30%;
+  background: var(--gargantua-cream);
   color: var(--gargantua-dark);
+  font-weight: 600;
 }
 
 .status-badge {
+  padding: 3px 10px;
   background: var(--gargantua-gold);
+  border-radius: var(--radius-sm);
   color: var(--gargantua-dark);
-  padding: 4px 8px;
-  border-radius: var(--radius-sm);
-  font-size: 12px;
-  font-weight: bold;
+  font-size: 0.8rem;
+  font-weight: 700;
 }
 
-code {
-  background: var(--gargantua-cream);
-  padding: 3px 6px;
-  border-radius: var(--radius-sm);
-  color: var(--gargantua-orange);
-  font-family: monospace;
-  border: 1px solid var(--gargantua-border);
+.info-table code {
+  color: var(--gargantua-orange-dark);
 }
 
-/* RESPONSIVIDAD TOTAL */
-@media (max-width: 768px) {
-  header {
-    flex-direction: column;
-    gap: 10px;
-    text-align: center;
-    padding: 15px;
-  }
-
-  .control-panel {
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .full-calendar-widget {
+/* En el movil, cada dato ocupa su propia linea */
+@media (max-width: 560px) {
+  .info-table,
+  .info-table tbody,
+  .info-table tr,
+  .info-table th,
+  .info-table td {
+    display: block;
     width: 100%;
-    max-width: 320px;
   }
 
-  .operations-menu {
-    grid-template-columns: 1fr;
-    width: 100%;
-    gap: 10px;
+  .info-table tr {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--gargantua-border);
   }
 
-  .menu-btn {
-    flex-direction: row;
-    justify-content: flex-start;
-    padding: 12px 20px;
-    gap: 15px;
+  .info-table tr:last-child {
+    border-bottom: 0;
   }
 
-  .menu-btn .icon {
-    font-size: 1.4rem;
-  }
-
-  .search-bar {
-    flex-direction: column;
+  .info-table th,
+  .info-table td {
+    padding: 0;
+    border-bottom: 0;
   }
 
   .info-table th {
-    width: 40%;
-    font-size: 0.85rem;
-  }
-
-  .info-table td {
+    background: transparent;
+    color: var(--gargantua-gray);
     font-size: 0.85rem;
   }
 }

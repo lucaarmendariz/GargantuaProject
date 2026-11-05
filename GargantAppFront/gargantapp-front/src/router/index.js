@@ -41,7 +41,7 @@ const router = createRouter({
   ]
 })
 
-// 🔐 Guardián de Seguridad Global (Navigation Guard)
+// Guardián de Seguridad Global (Navigation Guard)
 router.beforeEach((to) => {
   // 1. Recuperamos los datos de sesión almacenados al loguearse
   const user = getUser();
@@ -58,7 +58,7 @@ router.beforeEach((to) => {
     
     if (!hasRolePermission) {
       // Si está logueado pero no tiene el rol necesario, le mandamos al Panel Central
-      alert('⚠️ Acceso denegado: Tu perfil de operario no tiene permisos para esta sección.');
+      alert('Acceso denegado: Tu perfil de operario no tiene permisos para esta sección.');
       return { name: 'dashboard' };
     }
   }

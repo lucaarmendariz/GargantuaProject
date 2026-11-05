@@ -37,7 +37,7 @@ const handleLogin = async () => {
 
 <template>
   <div class="login-container">
-    <div class="login-card">
+    <div class="login-card panel">
       <h2>Gargantua App</h2>
       <p>Control de trazabilidad</p>
       
@@ -55,7 +55,7 @@ const handleLogin = async () => {
         <button type="submit">Entrar al Sistema</button>
       </form>
       
-      <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
+      <p v-if="errorMessage" class="msg-error">{{ errorMessage }}</p>
     </div>
   </div>
 </template>
@@ -63,81 +63,40 @@ const handleLogin = async () => {
 <style scoped>
 .login-container {
   display: flex;
-  justify-content: center;
   align-items: center;
-  height: 100vh;
+  justify-content: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 16px;
 }
 
 .login-card {
-  background: var(--gargantua-white);
-  padding: 35px;
-  border-radius: var(--radius-md);
-  box-shadow: 0 6px 15px rgba(74, 51, 25, 0.08);
-  width: 330px;
-  border-top: 5px solid var(--gargantua-gold); /* Detalle dorado arriba */
+  width: 100%;
+  max-width: 400px;
+  border-top: 4px solid var(--gargantua-gold);
 }
 
 h2 {
-  margin-bottom: 5px;
-  color: var(--gargantua-dark);
   text-align: center;
 }
 
-p {
+.login-card > p:not(.msg-error) {
+  margin: 4px 0 24px;
   color: var(--gargantua-gray);
-  font-size: 14px;
-  margin-bottom: 25px;
   text-align: center;
 }
 
 .form-group {
-  margin-bottom: 18px;
-}
-
-label {
-  display: block;
-  margin-bottom: 6px;
-  font-weight: bold;
-  color: var(--gargantua-dark);
-}
-
-input {
-  width: 100%;
-  padding: 11px;
-  border: 1px solid var(--gargantua-border);
-  border-radius: var(--radius-sm);
-  box-sizing: border-box;
-  background-color: var(--gargantua-cream);
-  color: var(--gargantua-dark);
-}
-
-input:focus {
-  outline: none;
-  border-color: var(--gargantua-orange);
+  margin-bottom: 16px;
 }
 
 button {
   width: 100%;
-  padding: 12px;
-  background-color: var(--gargantua-gold);
-  color: var(--gargantua-dark);
-  border: none;
-  border-radius: var(--radius-sm);
-  font-weight: bold;
-  cursor: pointer;
-  margin-top: 10px;
-  transition: var(--transition);
+  margin-top: 4px;
 }
 
-button:hover {
-  background-color: var(--gargantua-orange);
-  color: var(--gargantua-white);
-}
-
-.error {
-  color: var(--gargantua-danger);
-  font-weight: bold;
-  margin-top: 15px;
+.msg-error {
+  margin-top: 16px;
   text-align: center;
 }
 </style>
