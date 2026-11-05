@@ -34,6 +34,13 @@ describe('guard del router', () => {
     expect(alert).toHaveBeenCalledOnce();
   });
 
+  it('cualquier usuario con sesión ve pedidos y trazabilidad', async () => {
+    login('OPERARIO');
+    expect(await goTo('/pedidos')).toBe('/pedidos');
+    expect(await goTo('/pedidos/5')).toBe('/pedidos/5');
+    expect(await goTo('/lotes/3/trazabilidad')).toBe('/lotes/3/trazabilidad');
+  });
+
   it('el administrador entra en el historial', async () => {
     login('ADMIN');
     expect(await goTo('/historial-global')).toBe('/historial-global');

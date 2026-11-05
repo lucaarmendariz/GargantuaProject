@@ -217,6 +217,134 @@ textarea {
   color: var(--gargantua-danger);
 }
 
+/* ---------- Estados ---------- */
+.status {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.status-ABIERTO {
+  background: #fef3c7;
+  color: #854d0e;
+}
+
+.status-CERRADO {
+  background: var(--gargantua-success-bg);
+  color: var(--gargantua-success);
+}
+
+.status-CANCELADO,
+.status-CADUCADO {
+  background: var(--gargantua-danger-bg);
+  color: var(--gargantua-danger);
+}
+
+/* ---------- Listas de fichas ---------- */
+.item-list {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+}
+
+.item-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 14px;
+  background: var(--gargantua-cream);
+  border: 1px solid var(--gargantua-border);
+  border-radius: var(--radius-sm);
+  color: inherit;
+  overflow-wrap: anywhere;
+  text-decoration: none;
+}
+
+a.item-card:hover {
+  border-color: var(--gargantua-orange);
+}
+
+.item-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 12px;
+}
+
+.item-title {
+  color: var(--gargantua-dark);
+  font-weight: 700;
+}
+
+.item-meta {
+  color: var(--gargantua-gray);
+  font-size: 0.875rem;
+}
+
+.empty-state {
+  color: var(--gargantua-gray);
+  font-size: 0.925rem;
+}
+
+a {
+  color: var(--gargantua-orange-dark);
+  font-weight: 600;
+}
+
+/* Cantidades del lote */
+.stats {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 130px), 1fr));
+}
+
+.stat {
+  padding: 12px;
+  background: var(--gargantua-cream);
+  border: 1px solid var(--gargantua-border);
+  border-radius: var(--radius-sm);
+}
+
+.stat-label {
+  display: block;
+  color: var(--gargantua-gray);
+  font-size: 0.825rem;
+  font-weight: 600;
+}
+
+.stat-value {
+  color: var(--gargantua-dark);
+  font-size: 1.15rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.btn-secondary {
+  background: var(--gargantua-white);
+  border-color: var(--gargantua-border);
+  color: var(--gargantua-dark);
+}
+
+.btn-secondary:hover {
+  background: var(--gargantua-cream);
+  border-color: var(--gargantua-orange);
+}
+
+.btn-danger {
+  background: var(--gargantua-white);
+  border-color: var(--gargantua-danger);
+  color: var(--gargantua-danger);
+}
+
+.btn-danger:hover {
+  background: var(--gargantua-danger-bg);
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none !important;

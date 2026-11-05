@@ -4,6 +4,9 @@ import DashboardView from '../views/DashboardView.vue'
 import InventarioView from '../views/InventarioView.vue'
 import HistorialGlobalView from '../views/HistorialGlobalView.vue'
 import ProduccionView from '../views/ProduccionView.vue'
+import PedidosView from '../views/PedidosView.vue'
+import PedidoDetalleView from '../views/PedidoDetalleView.vue'
+import TrazabilidadLoteView from '../views/TrazabilidadLoteView.vue'
 import { getToken, getUser } from '../utils/session';
 
 const router = createRouter({
@@ -37,6 +40,26 @@ const router = createRouter({
       name: 'produccion', 
       component: ProduccionView,
       meta: { requiresAuth: true, roles: ['ADMIN', 'OPERARIO'] } // Operarios y admin
+    },
+    {
+      path: '/pedidos',
+      name: 'pedidos',
+      component: PedidosView,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/pedidos/:id',
+      name: 'pedido-detalle',
+      component: PedidoDetalleView,
+      props: true,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/lotes/:id/trazabilidad',
+      name: 'lote-trazabilidad',
+      component: TrazabilidadLoteView,
+      props: true,
+      meta: { requiresAuth: true }
     }
   ]
 })
