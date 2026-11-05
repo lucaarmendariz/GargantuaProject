@@ -53,11 +53,7 @@ const updateProduct = async (productData) => {
   } catch (error) {
     // 🔍 ESTO NOS VA A CHIVAR EL ERROR REAL EN LA CONSOLA F12:
     console.error("Fallo crítico en el PUT:", error);
-    if (error.response) {
-      console.error("Datos devueltos por Spring:", error.response.data);
-      console.error("Código de estado HTTP:", error.response.status);
-    }
-    alert(`Error al actualizar la ficha: ${error.message}`);
+    alert(`Error al actualizar la ficha: ${error.status ? `HTTP ${error.status}` : error.message}`);
   }
 };
 

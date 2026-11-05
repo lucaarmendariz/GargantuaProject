@@ -41,7 +41,7 @@ const router = createRouter({
 })
 
 // 🔐 Guardián de Seguridad Global (Navigation Guard)
-router.beforeEach((to, from, next) => {
+router.beforeEach((to) => {
   // 1. Recuperamos los datos de sesión almacenados al loguearse
   const savedUser = localStorage.getItem('user'); 
   const user = savedUser ? JSON.parse(savedUser) : null;
@@ -49,7 +49,7 @@ router.beforeEach((to, from, next) => {
   // 2. Comprobar si la pestaña exige estar logueado
   if (to.meta.requiresAuth && !user) {
     // Si no hay sesión, patada hacia el login
-    return next({ name: 'login' });
+    return { name: 'login' };
   }
 
   // 3. Comprobar restricciones de Rol (Si la ruta tiene limitaciones)
@@ -59,12 +59,11 @@ router.beforeEach((to, from, next) => {
     if (!hasRolePermission) {
       // Si está logueado pero no tiene el rol necesario, le mandamos al Panel Central
       alert('⚠️ Acceso denegado: Tu perfil de operario no tiene permisos para esta sección.');
-      return next({ name: 'dashboard' });
+      return { name: 'dashboard' };
     }
   }
 
   // Si pasa todos los controles, se le permite continuar el viaje
-  next();
 })
 
 export default router

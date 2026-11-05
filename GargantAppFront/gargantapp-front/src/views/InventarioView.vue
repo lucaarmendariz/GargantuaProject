@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router';
 import { useInventory } from '../composables/useInventory';
 import ProductForm from '../components/ProductForm.vue';
 import LotForm from '../components/LotForm.vue';
+import { formatEpochDate } from '../utils/date';
 
 const router = useRouter();
 const {
@@ -97,7 +98,7 @@ const handleConfirmDelete = (id, name) => {
               <td>
                 <div v-if="getProductLots(prod.productId).length > 0" class="lots-container">
                   <span v-for="lot in getProductLots(prod.productId)" :key="lot.lotNumber" class="lot-pill"
-                    :title="`Expiración: ${lot.expirationDate ? new Date(lot.expirationDate).toLocaleDateString() : 'N/A'}`">
+                    :title="`Expiración: ${formatEpochDate(lot.expirationDate)}`">
                     <strong>{{ lot.lotNumber }}</strong>: {{ lot.quantity }} {{ lot.measureUnit }}
                   </span>
                 </div>
