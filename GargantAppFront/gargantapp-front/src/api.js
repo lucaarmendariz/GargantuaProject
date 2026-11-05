@@ -1,8 +1,21 @@
+import { clearSession, getToken } from './utils/session';
+
 const BASE_URL = 'http://localhost:8080/api';
+
+// El login no lleva token: uno caducado haría que el backend rechazara la petición.
+function authHeaders(endpoint) {
+  const token = getToken();
+  return token && !endpoint.startsWith('/auth/') ? { Authorization: `Bearer ${token}` } : {};
+}
 
 // Lanza la respuesta si es un error (404, 500...) y lee el cuerpo según su tipo:
 // el backend puede devolver JSON, texto plano o nada (204).
-async function parseResponse(response) {
+async function parseResponse(response, endpoint) {
+  // Sesión caducada o inválida: se cierra y se vuelve al login
+  if (response.status === 401 && !endpoint.startsWith('/auth/')) {
+    clearSession();
+    window.location.assign('/');
+  }
   if (!response.ok) throw response;
   if (response.status === 204) return null;
   const contentType = response.headers.get('content-type') || '';
@@ -13,18 +26,19 @@ async function sendJson(method, endpoint, body) {
   const response = await fetch(`${BASE_URL}${endpoint}`, {
     method,
     headers: {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      ...authHeaders(endpoint)
     },
     body: JSON.stringify(body)
   });
-  return parseResponse(response);
+  return parseResponse(response, endpoint);
 }
 
 const apiClient = {
   // Para peticiones GET (como buscar un lote)
   async get(endpoint) {
-    const response = await fetch(`${BASE_URL}${endpoint}`);
-    return parseResponse(response);
+    const response = await fetch(`${BASE_URL}${endpoint}`, { headers: authHeaders(endpoint) });
+    return parseResponse(response, endpoint);
   },
 
   // Para peticiones POST (como el Login)
@@ -39,8 +53,8 @@ const apiClient = {
 
   // Para peticiones DELETE (como dar de baja un producto)
   async delete(endpoint) {
-    const response = await fetch(`${BASE_URL}${endpoint}`, { method: 'DELETE' });
-    return parseResponse(response);
+    const response = await fetch(`${BASE_URL}${endpoint}`, { method: 'DELETE', headers: authHeaders(endpoint) });
+    return parseResponse(response, endpoint);
   }
 };
 

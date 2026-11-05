@@ -4,6 +4,7 @@ import DashboardView from '../views/DashboardView.vue'
 import InventarioView from '../views/InventarioView.vue'
 import HistorialGlobalView from '../views/HistorialGlobalView.vue'
 import ProduccionView from '../views/ProduccionView.vue'
+import { getToken, getUser } from '../utils/session';
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -43,11 +44,10 @@ const router = createRouter({
 // 🔐 Guardián de Seguridad Global (Navigation Guard)
 router.beforeEach((to) => {
   // 1. Recuperamos los datos de sesión almacenados al loguearse
-  const savedUser = localStorage.getItem('user'); 
-  const user = savedUser ? JSON.parse(savedUser) : null;
+  const user = getUser();
 
   // 2. Comprobar si la pestaña exige estar logueado
-  if (to.meta.requiresAuth && !user) {
+  if (to.meta.requiresAuth && (!user || !getToken())) {
     // Si no hay sesión, patada hacia el login
     return { name: 'login' };
   }

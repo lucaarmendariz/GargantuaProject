@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import apiClient from '../api';
+import { saveSession } from '../utils/session';
 
 const username = ref('');
 const password = ref('');
@@ -19,7 +20,7 @@ const handleLogin = async () => {
     });
 
     // Guardamos la sesión en el navegador
-    localStorage.setItem('user', JSON.stringify(userData));
+    saveSession(userData);
     
     // Saltamos al panel de control
     router.push('/dashboard');
