@@ -43,13 +43,12 @@ const router = createRouter({
 // 🔐 Guardián de Seguridad Global (Navigation Guard)
 router.beforeEach((to, from, next) => {
   // 1. Recuperamos los datos de sesión almacenados al loguearse
-  const token = localStorage.getItem('token');
   const savedUser = localStorage.getItem('user'); 
   const user = savedUser ? JSON.parse(savedUser) : null;
 
   // 2. Comprobar si la pestaña exige estar logueado
-  if (to.meta.requiresAuth && !token) {
-    // Si no hay token, patada hacia el login
+  if (to.meta.requiresAuth && !user) {
+    // Si no hay sesión, patada hacia el login
     return next({ name: 'login' });
   }
 
