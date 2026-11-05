@@ -1,106 +1,224 @@
-@import './base.css';
-
-#app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  font-weight: normal;
-}
-
-a,
-.green {
-  text-decoration: none;
-  color: hsla(160, 100%, 37%, 1);
-  transition: 0.4s;
-  padding: 3px;
-}
-
-@media (hover: hover) {
-  a:hover {
-    background-color: hsla(160, 100%, 37%, 0.2);
-  }
-}
-
-@media (min-width: 1024px) {
-  body {
-    display: flex;
-    place-items: center;
-  }
-
-  #app {
-    display: grid;
-    padding: 0 2rem;
-  }
-
 /* =================================================================
-   SISTEMA DE DISEÑO: GARGANTÚA TORTILLAS
+   SISTEMA DE DISENO: GARGANTUA
+   Para cambiar los colores de toda la aplicacion, edita :root.
    ================================================================= */
 :root {
-  --gargantua-gold: #f5af19;
-  --gargantua-orange: #e67e22;
-  --gargantua-cream: #fffbf2;
+  --gargantua-dark: #33210f;
+  --gargantua-text: #2f2418;
+  --gargantua-gray: #6b5e50;
+  --gargantua-cream: #faf6ef;
   --gargantua-white: #ffffff;
-  --gargantua-dark: #3e2712;
-  --gargantua-gray: #7f8c8d;
-  --gargantua-border: #f0e3cc;
-  --gargantua-success: #27ae60;
-  --gargantua-danger: #c0392b;
-  --radius-lg: 16px; /* Bordes más redondeados para la card principal */
-  --radius-md: 8px;
-  --transition: all 0.3s ease;
+  --gargantua-border: #e6dccb;
+  --gargantua-gold: #f5af19;
+  --gargantua-orange: #b45309;
+  --gargantua-orange-dark: #92400e;
+  --gargantua-success: #166534;
+  --gargantua-success-bg: #dcfce7;
+  --gargantua-danger: #b91c1c;
+  --gargantua-danger-bg: #fee2e2;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --shadow-sm: 0 1px 3px rgba(51, 33, 15, 0.08);
+  --transition: 0.2s ease;
+
+  /* Margen lateral fluido y ancho maximo del contenido */
+  --gutter: clamp(16px, 4vw, 40px);
+  --page-max: 1320px;
+  --page-inline: max(var(--gutter), calc((100% - var(--page-max)) / 2));
+  --control-height: 44px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
   margin: 0;
-  padding: 0;
-  font-family: 'Segoe UI', Roboto, sans-serif;
-  background-color: var(--gargantua-cream);
-  /* LOGO EN EL FONDO: Marca de agua centrada y fija */
-  background-image: url('../imgs/logo_Gargantua.png');
-  background-repeat: no-repeat;
-  background-position: center;
-  background-attachment: fixed;
-  background-size: 300px; /* Tamaño sutil */
-  background-blend-mode: overlay;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--gargantua-cream);
+  color: var(--gargantua-text);
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
+  font-size: 1rem;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, p {
+  margin: 0;
+}
+
+h1, h2 {
+  font-size: clamp(1.2rem, 1rem + 1vw, 1.6rem);
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
   color: var(--gargantua-dark);
 }
 
-/* CONTENEDOR MAESTRO: Centra la Card vertical y horizontalmente */
-.app-wrapper {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px; /* Espacio para que no toque los bordes en móvil */
-  box-sizing: border-box;
+code {
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.875em;
 }
 
-/* LA TARJETA PRINCIPAL (The Card) */
-.main-card {
-  background: rgba(255, 255, 255, 0.95); /* Un pelín transparente para ver el fondo */
-  backdrop-filter: blur(5px); /* Efecto cristal moderno */
-  width: 100%;
-  max-width: 1000px; /* Ancho máximo en ordenador */
-  min-height: 600px;
-  border-radius: var(--radius-lg);
-  box-shadow: 0 15px 35px rgba(62, 39, 18, 0.15);
-  border: 1px solid var(--gargantua-white);
-  overflow: hidden; /* Para que el contenido no se salga de los bordes redondeados */
+:focus-visible {
+  outline: 2px solid var(--gargantua-orange);
+  outline-offset: 2px;
+}
+
+/* ---------- Estructura de las pantallas ---------- */
+.content {
   display: flex;
   flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
-/* RESPONSIVIDAD (Móvil) */
-@media (max-width: 600px) {
-  .app-wrapper {
-    padding: 10px; /* Menos margen en móviles */
-    align-items: flex-start; /* En móvil mejor que empiece arriba */
-  }
-  
-  .main-card {
-    min-height: auto;
-    border-radius: var(--radius-md);
+.card-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+  padding: 16px var(--page-inline);
+  background: var(--gargantua-dark);
+  border-bottom: 3px solid var(--gargantua-gold);
+  color: var(--gargantua-cream);
+}
+
+.card-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: clamp(16px, 3vw, 24px);
+  padding: clamp(16px, 3vw, 32px) var(--page-inline);
+}
+
+.panel {
+  min-width: 0;
+  padding: clamp(16px, 2.5vw, 24px);
+  background: var(--gargantua-white);
+  border: 1px solid var(--gargantua-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ---------- Botones ---------- */
+button {
+  min-height: var(--control-height);
+  padding: 8px 18px;
+  background: var(--gargantua-orange);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--gargantua-white);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  transition: background-color var(--transition), border-color var(--transition), color var(--transition);
+}
+
+button:hover {
+  background: var(--gargantua-orange-dark);
+}
+
+.btn-back {
+  background: transparent;
+  border-color: var(--gargantua-gold);
+  color: var(--gargantua-cream);
+}
+
+.btn-back:hover {
+  background: var(--gargantua-gold);
+  color: var(--gargantua-dark);
+}
+
+/* ---------- Formularios ---------- */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+label {
+  color: var(--gargantua-dark);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  min-height: var(--control-height);
+  padding: 9px 12px;
+  background: var(--gargantua-white);
+  border: 1px solid #cdbfa9;
+  border-radius: var(--radius-sm);
+  color: var(--gargantua-text);
+  font: inherit;
+}
+
+::placeholder {
+  color: var(--gargantua-gray);
+  opacity: 1;
+}
+
+/* Entrada de busqueda con su boton: en pantallas estrechas se apilan */
+.input-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.input-row input {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.input-row button {
+  flex: 0 1 auto;
+}
+
+@media (max-width: 480px) {
+  .input-row button {
+    flex: 1 1 100%;
   }
 }
 
+/* ---------- Mensajes ---------- */
+.msg-success,
+.msg-error {
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.msg-success {
+  background: var(--gargantua-success-bg);
+  color: var(--gargantua-success);
+}
+
+.msg-error {
+  background: var(--gargantua-danger-bg);
+  color: var(--gargantua-danger);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
 }

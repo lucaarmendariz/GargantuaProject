@@ -32,21 +32,21 @@ const handleCreateLot = async () => {
       supplierReference: lotSupplierReference.value
     });
 
-    lotSuccess.value = '🟢 Lote físico registrado e indexado correctamente.';
+    lotSuccess.value = 'Lote físico registrado e indexado correctamente.';
     
     lotProductId.value = ''; lotNumber.value = ''; lotQuantity.value = '';
     lotExpirationDate.value = ''; lotSupplierReference.value = '';
     
     emit('success');
   } catch (error) {
-    lotError.value = '❌ Error al crear el lote. Verifica que el código de lote sea único.';
+    lotError.value = 'Error al crear el lote. Verifica que el código de lote sea único.';
   }
 };
 </script>
 
 <template>
-  <section class="form-section">
-    <h3>📦 2. Registrar Entrada de Lote</h3>
+  <section class="form-section panel">
+    <h3>2. Registrar Entrada de Lote</h3>
     <form @submit.prevent="handleCreateLot" class="inner-form">
       <div class="form-group">
         <label>Asociar a Producto (*):</label>

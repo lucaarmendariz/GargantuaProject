@@ -21,19 +21,19 @@ const handleCreateProduct = async () => {
       description: prodDesc.value
     });
 
-    prodSuccess.value = '🟢 Producto maestro añadido al catálogo.';
+    prodSuccess.value = 'Producto maestro añadido al catálogo.';
     prodSku.value = ''; prodName.value = ''; prodDesc.value = '';
     
     emit('success');
   } catch (error) {
-    prodError.value = '❌ Error al crear el producto. Comprueba que el SKU no esté duplicado.';
+    prodError.value = 'Error al crear el producto. Comprueba que el SKU no esté duplicado.';
   }
 };
 </script>
 
 <template>
-  <section class="form-section">
-    <h3>🍎 1. Declarar Producto Maestro</h3>
+  <section class="form-section panel">
+    <h3>1. Declarar Producto Maestro</h3>
     <form @submit.prevent="handleCreateProduct" class="inner-form">
       <div class="form-group">
         <label>Código SKU (*):</label>
