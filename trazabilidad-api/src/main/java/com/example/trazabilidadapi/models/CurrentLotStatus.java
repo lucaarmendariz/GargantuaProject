@@ -20,7 +20,7 @@ public class CurrentLotStatus {
     private String measureUnit;
     private Long expirationDate;
     private String currentState;
-    private Long lastUpdate;
+    private LocalDateTime lastUpdate;
     private String lastOperator;
     private String ocrRawText;
     private String lastObservations;
