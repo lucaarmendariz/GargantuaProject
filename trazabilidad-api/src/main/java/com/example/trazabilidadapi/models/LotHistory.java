@@ -17,4 +17,5 @@ public class LotHistory {
     private BigDecimal quantityAffected;
     private String ocrRawText;
     private String observations;
+    private String orderNumber;
 }

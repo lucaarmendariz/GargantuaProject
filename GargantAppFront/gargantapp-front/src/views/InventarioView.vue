@@ -74,7 +74,7 @@ const handleConfirmDelete = (id, name) => {
               <th>Código SKU</th>
               <th>Nombre del Artículo</th>
               <th>Descripción Técnica</th>
-              <th>Lotes Físicos Asociados</th>
+              <th>Lotes (disponible / stock)</th>
               <th>Estado</th>
               <th>Acciones Planta</th>
             </tr>
@@ -95,10 +95,11 @@ const handleConfirmDelete = (id, name) => {
 
               <td data-label="Lotes">
                 <div v-if="getProductLots(prod.productId).length > 0" class="lots-container">
-                  <span v-for="lot in getProductLots(prod.productId)" :key="lot.lotNumber" class="lot-pill"
-                    :title="`Expiración: ${formatEpochDate(lot.expirationDate)}`">
-                    <strong>{{ lot.lotNumber }}</strong>: {{ lot.quantity }} {{ lot.measureUnit }}
-                  </span>
+                  <RouterLink v-for="lot in getProductLots(prod.productId)" :key="lot.lotNumber" class="lot-pill"
+                    :to="`/lotes/${lot.lotId}/trazabilidad`"
+                    :title="`Expiración: ${formatEpochDate(lot.expirationDate)}. Ver trazabilidad`">
+                    <strong>{{ lot.lotNumber }}</strong>: {{ lot.availableQuantity }} / {{ lot.currentStock }} {{ lot.measureUnit }}
+                  </RouterLink>
                 </div>
                 <span v-else class="no-lots">Sin lotes activos</span>
               </td>
@@ -300,8 +301,15 @@ const handleConfirmDelete = (id, name) => {
   background: var(--gargantua-cream);
   border: 1px solid var(--gargantua-border);
   border-radius: var(--radius-sm);
+  color: inherit;
   font-size: 0.825rem;
+  font-weight: 400;
   overflow-wrap: anywhere;
+  text-decoration: none;
+}
+
+.lot-pill:hover {
+  border-color: var(--gargantua-orange);
 }
 
 .no-lots {

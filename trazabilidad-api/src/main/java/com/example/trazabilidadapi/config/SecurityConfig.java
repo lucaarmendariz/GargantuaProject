@@ -44,8 +44,12 @@ public class SecurityConfig {
                         .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                         // Consulta del estado de un lote: cualquier usuario con sesion
-                        .requestMatchers(HttpMethod.GET, "/api/trazabilidad/**", "/api/lotes/estado/**").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/trazabilidad/**", "/api/lotes/estado/**", "/api/lotes/*/trazabilidad").authenticated()
                         // Mismos permisos que las pantallas del frontend
+                        // Pedidos: el operario los consulta y registra el consumo real al cerrarlos
+                        .requestMatchers(HttpMethod.GET, "/api/pedidos/**").hasAnyRole("ADMIN", "ENCARGADO", "OPERARIO")
+                        .requestMatchers(HttpMethod.POST, "/api/pedidos/*/cerrar").hasAnyRole("ADMIN", "ENCARGADO", "OPERARIO")
+                        .requestMatchers("/api/pedidos/**").hasAnyRole("ADMIN", "ENCARGADO")
                         .requestMatchers(HttpMethod.POST, "/api/historial/escanear").hasAnyRole("ADMIN", "OPERARIO")
                         .requestMatchers("/api/historial/**").hasRole("ADMIN")
                         .requestMatchers("/api/productos/**", "/api/lotes/**").hasAnyRole("ADMIN", "ENCARGADO")

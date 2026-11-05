@@ -13,6 +13,10 @@ public class ProductLot {
     private int productId;
     private String lotNumber;
     private BigDecimal quantity;
+    private BigDecimal reservedQuantity;
+    private BigDecimal consumedQuantity;
+    private BigDecimal currentStock;
+    private BigDecimal availableQuantity;
     private String measureUnit;
     private Long expirationDate;
     private String supplierReference;

@@ -112,6 +112,9 @@ public class ProductLotRepository {
 
             stmt.execute();
         } catch (SQLException e) {
+            if (e.getErrorCode() == 122) {
+                throw new IllegalStateException("La cantidad no puede ser menor que lo ya reservado o consumido.");
+            }
             throw new RuntimeException("Error al actualizar el lote con ID: " + productLot.getLotId(), e);
         }
     }
@@ -125,6 +128,9 @@ public class ProductLotRepository {
             stmt.setInt(1, lotId);
             stmt.execute();
         } catch (SQLException e) {
+            if (e.getErrorCode() == 121) {
+                throw new IllegalStateException("El lote se ha usado en pedidos y debe conservarse por trazabilidad.");
+            }
             throw new RuntimeException("Error al eliminar el lote con ID: " + lotId, e);
         }
     }

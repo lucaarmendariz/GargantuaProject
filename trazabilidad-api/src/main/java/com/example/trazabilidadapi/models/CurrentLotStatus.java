@@ -15,6 +15,10 @@ public class CurrentLotStatus {
     private int lotId;
     private String lotNumber;
     private BigDecimal initialQuantity;
+    private BigDecimal reservedQuantity;
+    private BigDecimal consumedQuantity;
+    private BigDecimal currentStock;
+    private BigDecimal availableQuantity;
     private String measureUnit;
     private Long expirationDate;
     private String currentState;

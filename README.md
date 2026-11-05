@@ -102,6 +102,29 @@ La API exige un token JWT, que se obtiene en `POST /api/auth/login` y caduca a l
 
 > El frontend necesita que el backend esté en marcha. Si el navegador muestra errores de CORS, el backend debe permitir el origen del frontend.
 
+## Pedidos y stock
+
+Un pedido tiene una fecha programada y una línea por cada lote que usa:
+
+1. **Reservar:** al asignar un lote baja su cantidad *disponible*, pero no su stock.
+2. **Cerrar:** se indica lo realmente consumido en cada línea. Eso se resta del stock y se libera lo reservado. O se registran todas las líneas o no cambia nada.
+3. **Cancelar o retirar un lote:** se libera lo reservado sin tocar el stock.
+
+`stock = entrada - consumido` y `disponible = stock - reservado`. Un lote cuyo último movimiento manual es `BLOQUEADO` no se puede reservar ni consumir. Los lotes caducados se señalan, pero no se bloquean.
+
+| Rol | Pedidos |
+|-----|---------|
+| `ADMIN`, `ENCARGADO` | Crear, asignar y retirar lotes, cerrar y cancelar |
+| `OPERARIO` | Consultar y cerrar |
+
+**Actualizar una base de datos existente sin perder datos**, desde `trazabilidad-api/database`:
+
+```bash
+set -a; source ./.env; set +a
+docker exec -i -e MYSQL_PWD="$DB_PASSWORD" trazabilidad_db mariadb -utrazabilidad_app traceability_lean < migrations/001_pedidos.sql
+docker exec -i -e MYSQL_PWD="$DB_PASSWORD" trazabilidad_db mariadb -utrazabilidad_app traceability_lean < 02_procedures.sql
+```
+
 ## Flujo de trabajo
 
 - Trabaja cada parte en su propio IDE y abre solo su carpeta.

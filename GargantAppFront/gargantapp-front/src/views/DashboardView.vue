@@ -1,9 +1,10 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import apiClient from '../api';
 import { clearSession } from '../utils/session';
-import { formatEpochDateTime } from '../utils/date';
+import { dayRange, formatDayLong, formatEpochDate, formatEpochDateTime, isExpired } from '../utils/date';
+import { errorMessage } from '../utils/errors';
 
 const user = ref(null);
 const lotInput = ref('');
@@ -27,6 +28,7 @@ onMounted(() => {
     router.push('/');
   } else {
     user.value = JSON.parse(savedUser);
+    loadDay();
   }
 });
 
@@ -111,6 +113,41 @@ const isSelected = (date) => {
          date.getFullYear() === selectedDate.value.getFullYear();
 };
 
+// --- PEDIDOS Y PRODUCTOS EN USO DEL DIA SELECCIONADO ---
+const dayOrders = ref([]);
+const inUseLines = ref([]);
+const dayLoading = ref(true);
+const dayError = ref('');
+const selectedDayLabel = computed(() => formatDayLong(selectedDate.value));
+let dayRequest = 0;
+
+const loadDay = async () => {
+  // Si se pulsan varios días seguidos, solo cuenta la última respuesta
+  const request = ++dayRequest;
+  dayLoading.value = true;
+  dayError.value = '';
+  const { from, to } = dayRange(selectedDate.value);
+  try {
+    const [orders, lines] = await Promise.all([
+      apiClient.get(`/pedidos?desde=${from}&hasta=${to}`),
+      apiClient.get(`/pedidos/en-uso?desde=${from}&hasta=${to}`)
+    ]);
+    if (request !== dayRequest) return;
+    dayOrders.value = orders;
+    inUseLines.value = lines;
+  } catch (error) {
+    const message = await errorMessage(error, 'No se pudieron cargar los pedidos del día.');
+    if (request !== dayRequest) return;
+    dayOrders.value = [];
+    inUseLines.value = [];
+    dayError.value = message;
+  } finally {
+    if (request === dayRequest) dayLoading.value = false;
+  }
+};
+
+watch(selectedDate, loadDay);
+
 // --- RESTO DE FUNCIONES ---
 const navigateTo = (path) => {
   router.push(path);
@@ -180,6 +217,10 @@ const logout = () => {
         </div>
 
         <div class="operations-menu">
+          <button @click="navigateTo('/pedidos')" class="menu-btn btn-pedidos">
+            <span class="text">Pedidos</span>
+          </button>
+
           <button @click="navigateTo('/inventario')" class="menu-btn btn-inventario">
             <span class="text">Inventario Stock</span>
           </button>
@@ -193,6 +234,42 @@ const logout = () => {
           </button>
         </div>
 
+      </section>
+
+      <section class="panel day-section">
+        <h3>Pedidos del {{ selectedDayLabel }}</h3>
+        <p v-if="dayLoading" class="empty-state">Cargando pedidos...</p>
+        <p v-else-if="dayError" class="msg-error">{{ dayError }}</p>
+        <p v-else-if="dayOrders.length === 0" class="empty-state">No hay pedidos programados este día.</p>
+        <div v-else class="item-list">
+          <RouterLink v-for="order in dayOrders" :key="order.orderId" :to="`/pedidos/${order.orderId}`" class="item-card">
+            <div class="item-head">
+              <span class="item-title">{{ order.orderNumber }}</span>
+              <span class="status" :class="`status-${order.status}`">{{ order.status }}</span>
+            </div>
+            <span class="item-meta">{{ order.customerName || 'Sin cliente' }} · {{ order.lineCount }} lote(s)</span>
+          </RouterLink>
+        </div>
+      </section>
+
+      <section v-if="!dayError" class="panel day-section">
+        <h3>Productos en uso</h3>
+        <p class="item-meta section-help">Lotes reservados en los pedidos abiertos de este día.</p>
+        <p v-if="dayLoading" class="empty-state">Cargando productos...</p>
+        <p v-else-if="inUseLines.length === 0" class="empty-state">No hay productos en uso este día.</p>
+        <div v-else class="item-list">
+          <div v-for="line in inUseLines" :key="line.lineId" class="item-card">
+            <div class="item-head">
+              <span class="item-title">{{ line.productName }}</span>
+              <span v-if="isExpired(line.expirationDate)" class="status status-CADUCADO">CADUCADO</span>
+            </div>
+            <RouterLink :to="`/lotes/${line.lotId}/trazabilidad`">Lote {{ line.lotNumber }}</RouterLink>
+            <RouterLink :to="`/pedidos/${line.orderId}`">Pedido {{ line.orderNumber }}</RouterLink>
+            <span class="item-meta">En uso: {{ line.reservedQuantity }} {{ line.measureUnit }}</span>
+            <span class="item-meta">Stock del lote: {{ line.currentStock }} · Disponible: {{ line.availableQuantity }}</span>
+            <span class="item-meta">Reservado: {{ formatEpochDateTime(line.reservedAt) }} · Caducidad: {{ formatEpochDate(line.expirationDate) }}</span>
+          </div>
+        </div>
       </section>
 
       <section class="search-section panel">
@@ -222,8 +299,16 @@ const logout = () => {
                 <td>{{ lotData.initialQuantity }} {{ lotData.measureUnit }}</td>
               </tr>
               <tr>
+                <th>Stock Actual:</th>
+                <td>{{ lotData.currentStock }} {{ lotData.measureUnit }}</td>
+              </tr>
+              <tr>
+                <th>Disponible:</th>
+                <td>{{ lotData.availableQuantity }} {{ lotData.measureUnit }} (reservado: {{ lotData.reservedQuantity }})</td>
+              </tr>
+              <tr>
                 <th>Estado Actual:</th>
-                <td><span class="status-badge">{{ lotData.currentState }}</span></td>
+                <td><span class="status-badge">{{ lotData.currentState || 'Sin movimientos' }}</span></td>
               </tr>
               <tr>
                 <th>Última Actualización:</th>
@@ -231,19 +316,20 @@ const logout = () => {
               </tr>
               <tr>
                 <th>Último Operario:</th>
-                <td>{{ lotData.lastOperator }}</td>
+                <td>{{ lotData.lastOperator || 'N/A' }}</td>
               </tr>
               <tr>
                 <th>Lectura OCR en Bruto:</th>
-                <td><code>{{ lotData.ocrRawText }}</code></td>
+                <td><code v-if="lotData.ocrRawText">{{ lotData.ocrRawText }}</code><template v-else>N/A</template></td>
               </tr>
               <tr>
                 <th>Observaciones de Calidad:</th>
-                <td>{{ lotData.lastObservations }}</td>
+                <td>{{ lotData.lastObservations || 'N/A' }}</td>
               </tr>
             </tbody>
           </table>
         </div>
+        <RouterLink class="trace-link" :to="`/lotes/${lotData.lotId}/trazabilidad`">Ver trazabilidad completa del lote</RouterLink>
       </section>
 
     </main>
@@ -394,6 +480,24 @@ const logout = () => {
   background: var(--gargantua-white);
   border-color: var(--gargantua-orange);
   color: var(--gargantua-orange-dark);
+}
+
+.day-section h3 {
+  margin-bottom: 12px;
+}
+
+.day-section h3::first-letter {
+  text-transform: uppercase;
+}
+
+.section-help {
+  margin-top: -8px;
+  margin-bottom: 12px;
+}
+
+.trace-link {
+  display: inline-block;
+  margin-top: 14px;
 }
 
 .search-section h3,
