@@ -1,78 +1,5 @@
 DELIMITER ;;
 
--- 1. Obtener el estado actual completo de un lote por su código de barras/OCR
-CREATE OR REPLACE PROCEDURE `ProductLot_GetCurrentStatus`(IN _lotNumber VARCHAR(100))
-BEGIN
-    IF (SELECT lot_id FROM product_lot WHERE lot_number = _lotNumber) IS NULL THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'El lote no existe.', MYSQL_ERRNO = 101;
-    END IF;
-
-    SELECT
-        p.product_id,
-        p.sku AS product_sku,
-        p.name AS product_name,
-        pl.lot_id,
-        pl.lot_number,
-        pl.quantity AS initial_quantity,
-        pl.measure_unit,
-        pl.expiration_date,
-        lh.action_type AS current_state,
-        UNIX_TIMESTAMP(lh.action_timestamp) AS last_update,
-        lh.operator AS last_operator,
-        lh.ocr_raw_text,
-        lh.observations AS last_observations
-    FROM product_lot pl
-             JOIN product p ON pl.product_id = p.product_id
-             JOIN lot_history lh ON lh.lot_id = pl.lot_id
-    WHERE pl.lot_number = _lotNumber
-    ORDER BY lh.history_id DESC
-    LIMIT 1;
-END;;
-
--- 2. Obtener todos los productos activos
-CREATE OR REPLACE PROCEDURE `Product_FindAll`()
-BEGIN
-    SELECT product_id, sku, name, description, is_active, UNIX_TIMESTAMP(created_at) AS created_at, UNIX_TIMESTAMP(updated_at) AS updated_at FROM product WHERE is_active = 1;
-END;;
-
--- 3. Obtener un producto por su ID único
-CREATE OR REPLACE PROCEDURE `Product_FindById`(IN _productId INT)
-BEGIN
-    SELECT product_id, sku, name, description, is_active, UNIX_TIMESTAMP(created_at) AS created_at, UNIX_TIMESTAMP(updated_at) AS updated_at FROM product WHERE product_id = _productId;
-END;;
-
--- 4. Obtener todos los lotes asociados a un producto específico
-CREATE OR REPLACE PROCEDURE `ProductLot_FindByProductId`(IN _productId INT)
-BEGIN
-    SELECT lot_id, product_id, lot_number, quantity, measure_unit, expiration_date, supplier_reference, UNIX_TIMESTAMP(created_at) AS created_at, UNIX_TIMESTAMP(updated_at) AS updated_at FROM product_lot WHERE product_id = _productId;
-END;;
-
--- 5. Obtener el historial cronológico completo de un lote
-CREATE OR REPLACE PROCEDURE `LotHistory_FindByLotId`(IN _lotId INT)
-BEGIN
-    SELECT history_id, lot_id, action_type, operator, UNIX_TIMESTAMP(action_timestamp) AS action_timestamp, quantity_affected, ocr_raw_text, observations FROM lot_history WHERE lot_id = _lotId ORDER BY history_id DESC;
-END;;
-
--- 6. Insertar un nuevo movimiento/escaneo en el historial (MODIFICADO CON PARÁMETRO OUT)
-CREATE OR REPLACE PROCEDURE `LotHistory_Insert`(
-    IN _lotId INT,
-    IN _actionType VARCHAR(50),
-    IN _operator VARCHAR(100),
-    IN _quantityAffected DECIMAL(12,4),
-    IN _ocrRawText TEXT,
-    IN _observations TEXT,
-    OUT _historyId INT
-)
-BEGIN
-    INSERT INTO lot_history (lot_id, action_type, operator, quantity_affected, ocr_raw_text, observations)
-    VALUES (_lotId, _actionType, _operator, _quantityAffected, _ocrRawText, _observations);
-
-    SET _historyId = LAST_INSERT_ID();
-END;;
-
-DELIMITER ;
-DELIMITER ;;
-
 -- =================================================================
 -- BLOQUE 1: CRUD DE PRODUCTOS (product)
 -- =================================================================
@@ -180,7 +107,7 @@ END;;
 -- 2.2 READ (ALL): Ver todos los lotes en el sistema
 CREATE OR REPLACE PROCEDURE `ProductLot_GetAll`()
 BEGIN
-    SELECT lot_id, product_id, lot_number, quantity, measure_unit, expiration_date, supplier_reference, UNIX_TIMESTAMP(created_at) AS created_at, UNIX_TIMESTAMP(updated_at) AS updated_at FROM product_lot ORDER BY created_at DESC;
+    SELECT lot_id, product_id, lot_number, quantity, reserved_quantity, consumed_quantity, quantity - consumed_quantity AS current_stock, quantity - consumed_quantity - reserved_quantity AS available_quantity, measure_unit, expiration_date, supplier_reference, UNIX_TIMESTAMP(created_at) AS created_at, UNIX_TIMESTAMP(updated_at) AS updated_at FROM product_lot ORDER BY created_at DESC;
 END;;
 
 -- 2.3 READ (BY PRODUCT ID): Ver los lotes de un producto específico
@@ -188,7 +115,7 @@ CREATE OR REPLACE PROCEDURE `ProductLot_FindByProductId`(
     IN _productId INT
 )
 BEGIN
-    SELECT lot_id, product_id, lot_number, quantity, measure_unit, expiration_date, supplier_reference, UNIX_TIMESTAMP(created_at) AS created_at, UNIX_TIMESTAMP(updated_at) AS updated_at FROM product_lot WHERE product_id = _productId ORDER BY expiration_date ASC;
+    SELECT lot_id, product_id, lot_number, quantity, reserved_quantity, consumed_quantity, quantity - consumed_quantity AS current_stock, quantity - consumed_quantity - reserved_quantity AS available_quantity, measure_unit, expiration_date, supplier_reference, UNIX_TIMESTAMP(created_at) AS created_at, UNIX_TIMESTAMP(updated_at) AS updated_at FROM product_lot WHERE product_id = _productId ORDER BY expiration_date ASC;
 END;;
 
 -- 2.4 READ (BY ID): Buscar un lote por su ID interno
@@ -196,7 +123,7 @@ CREATE OR REPLACE PROCEDURE `ProductLot_FindById`(
     IN _lotId INT
 )
 BEGIN
-    SELECT lot_id, product_id, lot_number, quantity, measure_unit, expiration_date, supplier_reference, UNIX_TIMESTAMP(created_at) AS created_at, UNIX_TIMESTAMP(updated_at) AS updated_at FROM product_lot WHERE lot_id = _lotId;
+    SELECT lot_id, product_id, lot_number, quantity, reserved_quantity, consumed_quantity, quantity - consumed_quantity AS current_stock, quantity - consumed_quantity - reserved_quantity AS available_quantity, measure_unit, expiration_date, supplier_reference, UNIX_TIMESTAMP(created_at) AS created_at, UNIX_TIMESTAMP(updated_at) AS updated_at FROM product_lot WHERE lot_id = _lotId;
 END;;
 
 -- 2.5 UPDATE: Modificar stock o datos de un lote
@@ -210,6 +137,10 @@ CREATE OR REPLACE PROCEDURE `ProductLot_Update`(
 BEGIN
     IF (SELECT COUNT(*) FROM product_lot WHERE lot_id = _lotId) = 0 THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Error: El lote que intentas actualizar no existe.', MYSQL_ERRNO = 106;
+    END IF;
+
+    IF (SELECT consumed_quantity + reserved_quantity FROM product_lot WHERE lot_id = _lotId) > _quantity THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Error: La cantidad no puede ser menor que lo ya reservado o consumido.', MYSQL_ERRNO = 122;
     END IF;
 
     UPDATE product_lot
@@ -227,6 +158,10 @@ CREATE OR REPLACE PROCEDURE `ProductLot_Delete`(
 BEGIN
     IF (SELECT COUNT(*) FROM product_lot WHERE lot_id = _lotId) = 0 THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Error: El lote que intentas eliminar no existe.', MYSQL_ERRNO = 106;
+    END IF;
+
+    IF (SELECT COUNT(*) FROM order_line WHERE lot_id = _lotId) > 0 OR (SELECT COUNT(*) FROM order_event WHERE lot_id = _lotId) > 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Error: El lote se ha usado en pedidos y debe conservarse por trazabilidad.', MYSQL_ERRNO = 121;
     END IF;
 
     DELETE FROM product_lot WHERE lot_id = _lotId;
@@ -263,7 +198,11 @@ CREATE OR REPLACE PROCEDURE `LotHistory_FindByLotId`(
     IN _lotId INT
 )
 BEGIN
-    SELECT history_id, lot_id, action_type, operator, UNIX_TIMESTAMP(action_timestamp) AS action_timestamp, quantity_affected, ocr_raw_text, observations FROM lot_history WHERE lot_id = _lotId ORDER BY action_timestamp DESC;
+    SELECT lh.history_id, lh.lot_id, lh.action_type, lh.operator, UNIX_TIMESTAMP(lh.action_timestamp) AS action_timestamp, lh.quantity_affected, lh.ocr_raw_text, lh.observations, co.order_number
+    FROM lot_history lh
+             LEFT JOIN customer_order co ON co.order_id = lh.order_id
+    WHERE lh.lot_id = _lotId
+    ORDER BY lh.action_timestamp DESC, lh.history_id DESC;
 END;;
 
 -- 3.3 TRACEABILITY ENGINE: El motor principal del OCR
@@ -282,6 +221,10 @@ BEGIN
         pl.lot_id,
         pl.lot_number,
         pl.quantity AS initial_quantity,
+        pl.reserved_quantity,
+        pl.consumed_quantity,
+        pl.quantity - pl.consumed_quantity AS current_stock,
+        pl.quantity - pl.consumed_quantity - pl.reserved_quantity AS available_quantity,
         pl.measure_unit,
         pl.expiration_date,
         lh.action_type AS current_state,
@@ -291,9 +234,11 @@ BEGIN
         lh.observations AS last_observations
     FROM product_lot pl
              JOIN product p ON pl.product_id = p.product_id
-             JOIN lot_history lh ON lh.lot_id = pl.lot_id
+             -- El estado es el ultimo movimiento manual: reservar o consumir no borra un BLOQUEADO
+             LEFT JOIN lot_history lh ON lh.history_id = (
+                 SELECT MAX(history_id) FROM lot_history WHERE lot_id = pl.lot_id AND order_id IS NULL
+             )
     WHERE pl.lot_number = _lotNumber
-    ORDER BY lh.history_id DESC
     LIMIT 1;
 END;;
 
@@ -307,6 +252,315 @@ CREATE OR REPLACE PROCEDURE `AppUser_FindByUsername`(
 )
 BEGIN
     SELECT * FROM app_user WHERE username = _username AND is_active = 1;
+END;;
+
+DELIMITER ;
+
+DELIMITER ;;
+
+-- =================================================================
+-- BLOQUE 4: PEDIDOS
+-- Reservar baja el disponible; el stock solo baja al cerrar el pedido.
+-- =================================================================
+
+-- Bloquea el pedido durante la transaccion y comprueba que siga abierto
+CREATE OR REPLACE PROCEDURE `Order_LockOpen`(IN _orderId INT)
+BEGIN
+    DECLARE v_status VARCHAR(20) DEFAULT NULL;
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_status = NULL;
+
+    SELECT status INTO v_status FROM customer_order WHERE order_id = _orderId FOR UPDATE;
+
+    IF v_status IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'El pedido no existe.', MYSQL_ERRNO = 113;
+    END IF;
+    IF v_status <> 'ABIERTO' THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'El pedido ya no esta abierto.', MYSQL_ERRNO = 111;
+    END IF;
+END;;
+
+-- Un lote BLOQUEADO (por ejemplo, por calidad) no se puede usar
+CREATE OR REPLACE PROCEDURE `Lot_AssertUsable`(IN _lotId INT)
+BEGIN
+    DECLARE v_state VARCHAR(50) DEFAULT NULL;
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_state = NULL;
+
+    SELECT action_type INTO v_state FROM lot_history
+    WHERE lot_id = _lotId AND order_id IS NULL
+    ORDER BY history_id DESC LIMIT 1;
+
+    IF v_state = 'BLOQUEADO' THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'El lote esta bloqueado y no se puede usar.', MYSQL_ERRNO = 112;
+    END IF;
+END;;
+
+CREATE OR REPLACE PROCEDURE `Order_Create`(
+    IN _orderNumber VARCHAR(100),
+    IN _customerName VARCHAR(150),
+    IN _scheduledDate BIGINT,
+    IN _notes TEXT,
+    IN _operator VARCHAR(100),
+    OUT _orderId INT
+)
+BEGIN
+    IF (SELECT COUNT(*) FROM customer_order WHERE order_number = _orderNumber) > 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Ya existe un pedido con ese numero.', MYSQL_ERRNO = 110;
+    END IF;
+
+    INSERT INTO customer_order (order_number, customer_name, scheduled_date, notes, created_by)
+    VALUES (_orderNumber, _customerName, _scheduledDate, _notes, _operator);
+    SET _orderId = LAST_INSERT_ID();
+
+    INSERT INTO order_event (order_id, event_type, operator, notes)
+    VALUES (_orderId, 'CREADO', _operator, _notes);
+END;;
+
+-- Todos los filtros son opcionales. El rango de fechas incluye _from y excluye _to.
+CREATE OR REPLACE PROCEDURE `Order_GetAll`(
+    IN _status VARCHAR(20),
+    IN _from BIGINT,
+    IN _to BIGINT
+)
+BEGIN
+    SELECT co.order_id, co.order_number, co.customer_name, co.scheduled_date, co.status, co.notes,
+           co.created_by, co.closed_by, UNIX_TIMESTAMP(co.created_at) AS created_at, UNIX_TIMESTAMP(co.closed_at) AS closed_at,
+           (SELECT COUNT(*) FROM order_line ol WHERE ol.order_id = co.order_id) AS line_count
+    FROM customer_order co
+    WHERE (_status IS NULL OR co.status = _status)
+      AND (_from IS NULL OR co.scheduled_date >= _from)
+      AND (_to IS NULL OR co.scheduled_date < _to)
+    ORDER BY co.scheduled_date DESC, co.order_id DESC;
+END;;
+
+CREATE OR REPLACE PROCEDURE `Order_FindById`(IN _orderId INT)
+BEGIN
+    SELECT co.order_id, co.order_number, co.customer_name, co.scheduled_date, co.status, co.notes,
+           co.created_by, co.closed_by, UNIX_TIMESTAMP(co.created_at) AS created_at, UNIX_TIMESTAMP(co.closed_at) AS closed_at,
+           (SELECT COUNT(*) FROM order_line ol WHERE ol.order_id = co.order_id) AS line_count
+    FROM customer_order co
+    WHERE co.order_id = _orderId;
+END;;
+
+CREATE OR REPLACE PROCEDURE `OrderLine_FindByOrder`(IN _orderId INT)
+BEGIN
+    SELECT ol.line_id, ol.order_id, ol.lot_id, pl.lot_number, p.name AS product_name, p.sku AS product_sku,
+           pl.measure_unit, ol.reserved_quantity, ol.consumed_quantity
+    FROM order_line ol
+             JOIN product_lot pl ON pl.lot_id = ol.lot_id
+             JOIN product p ON p.product_id = pl.product_id
+    WHERE ol.order_id = _orderId
+    ORDER BY ol.line_id;
+END;;
+
+CREATE OR REPLACE PROCEDURE `OrderEvent_FindByOrder`(IN _orderId INT)
+BEGIN
+    SELECT oe.event_id, oe.order_id, oe.lot_id, pl.lot_number, pl.measure_unit, oe.event_type, oe.quantity, oe.operator, oe.notes,
+           UNIX_TIMESTAMP(oe.event_timestamp) AS event_timestamp
+    FROM order_event oe
+             LEFT JOIN product_lot pl ON pl.lot_id = oe.lot_id
+    WHERE oe.order_id = _orderId
+    ORDER BY oe.event_id DESC;
+END;;
+
+-- Reserva: la comprobacion y el UPDATE son una sola sentencia para evitar reservar de mas
+CREATE OR REPLACE PROCEDURE `OrderLine_Add`(
+    IN _orderId INT,
+    IN _lotId INT,
+    IN _quantity DECIMAL(12,4),
+    IN _operator VARCHAR(100),
+    OUT _lineId INT
+)
+BEGIN
+    DECLARE v_lot INT DEFAULT NULL;
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_lot = NULL;
+
+    CALL Order_LockOpen(_orderId);
+
+    IF _quantity IS NULL OR _quantity <= 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La cantidad debe ser mayor que cero.', MYSQL_ERRNO = 114;
+    END IF;
+
+    -- Se bloquea el lote desde el principio para que dos reservas no se interbloqueen
+    SELECT lot_id INTO v_lot FROM product_lot WHERE lot_id = _lotId FOR UPDATE;
+    IF v_lot IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'El lote no existe.', MYSQL_ERRNO = 106;
+    END IF;
+    IF (SELECT COUNT(*) FROM order_line WHERE order_id = _orderId AND lot_id = _lotId) > 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'El lote ya esta en este pedido.', MYSQL_ERRNO = 115;
+    END IF;
+
+    CALL Lot_AssertUsable(_lotId);
+
+    UPDATE product_lot
+    SET reserved_quantity = reserved_quantity + _quantity
+    WHERE lot_id = _lotId AND quantity - consumed_quantity - reserved_quantity >= _quantity;
+
+    IF ROW_COUNT() = 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No hay stock disponible suficiente en el lote.', MYSQL_ERRNO = 116;
+    END IF;
+
+    INSERT INTO order_line (order_id, lot_id, reserved_quantity) VALUES (_orderId, _lotId, _quantity);
+    SET _lineId = LAST_INSERT_ID();
+
+    INSERT INTO order_event (order_id, lot_id, event_type, quantity, operator)
+    VALUES (_orderId, _lotId, 'RESERVADO', _quantity, _operator);
+    INSERT INTO lot_history (lot_id, action_type, operator, quantity_affected, order_id)
+    VALUES (_lotId, 'RESERVADO', _operator, _quantity, _orderId);
+END;;
+
+CREATE OR REPLACE PROCEDURE `OrderLine_Remove`(
+    IN _orderId INT,
+    IN _lineId INT,
+    IN _operator VARCHAR(100)
+)
+BEGIN
+    DECLARE v_lot INT DEFAULT NULL;
+    DECLARE v_reserved DECIMAL(12,4);
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_lot = NULL;
+
+    CALL Order_LockOpen(_orderId);
+
+    SELECT lot_id, reserved_quantity INTO v_lot, v_reserved
+    FROM order_line WHERE line_id = _lineId AND order_id = _orderId FOR UPDATE;
+
+    IF v_lot IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La linea no pertenece a este pedido.', MYSQL_ERRNO = 117;
+    END IF;
+
+    UPDATE product_lot SET reserved_quantity = reserved_quantity - v_reserved WHERE lot_id = v_lot;
+    DELETE FROM order_line WHERE line_id = _lineId;
+
+    INSERT INTO order_event (order_id, lot_id, event_type, quantity, operator, notes)
+    VALUES (_orderId, v_lot, 'LIBERADO', v_reserved, _operator, 'Lote retirado del pedido');
+    INSERT INTO lot_history (lot_id, action_type, operator, quantity_affected, observations, order_id)
+    VALUES (v_lot, 'LIBERADO', _operator, v_reserved, 'Lote retirado del pedido', _orderId);
+END;;
+
+-- Libera lo reservado y resta del stock lo realmente usado, que puede ser mas o menos
+CREATE OR REPLACE PROCEDURE `OrderLine_Consume`(
+    IN _orderId INT,
+    IN _lineId INT,
+    IN _consumed DECIMAL(12,4),
+    IN _operator VARCHAR(100)
+)
+BEGIN
+    DECLARE v_lot INT DEFAULT NULL;
+    DECLARE v_reserved DECIMAL(12,4);
+    DECLARE v_previous DECIMAL(12,4);
+    DECLARE v_note VARCHAR(100);
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_lot = NULL;
+
+    CALL Order_LockOpen(_orderId);
+
+    SELECT lot_id, reserved_quantity, consumed_quantity INTO v_lot, v_reserved, v_previous
+    FROM order_line WHERE line_id = _lineId AND order_id = _orderId FOR UPDATE;
+
+    IF v_lot IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La linea no pertenece a este pedido.', MYSQL_ERRNO = 117;
+    END IF;
+    IF v_previous IS NOT NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Esta linea ya tiene su consumo registrado.', MYSQL_ERRNO = 118;
+    END IF;
+    IF _consumed IS NULL OR _consumed < 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La cantidad consumida no puede ser negativa.', MYSQL_ERRNO = 114;
+    END IF;
+    IF _consumed > 0 THEN
+        CALL Lot_AssertUsable(v_lot);
+    END IF;
+
+    UPDATE product_lot
+    SET reserved_quantity = reserved_quantity - v_reserved,
+        consumed_quantity = consumed_quantity + _consumed
+    WHERE lot_id = v_lot AND quantity - consumed_quantity - reserved_quantity + v_reserved >= _consumed;
+
+    IF ROW_COUNT() = 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No hay stock disponible suficiente en el lote.', MYSQL_ERRNO = 116;
+    END IF;
+
+    UPDATE order_line SET consumed_quantity = _consumed WHERE line_id = _lineId;
+
+    SET v_note = CONCAT('Reservado: ', v_reserved + 0);
+    INSERT INTO order_event (order_id, lot_id, event_type, quantity, operator, notes)
+    VALUES (_orderId, v_lot, 'CONSUMIDO', _consumed, _operator, v_note);
+    INSERT INTO lot_history (lot_id, action_type, operator, quantity_affected, observations, order_id)
+    VALUES (v_lot, 'CONSUMIDO', _operator, _consumed, v_note, _orderId);
+END;;
+
+CREATE OR REPLACE PROCEDURE `Order_Close`(
+    IN _orderId INT,
+    IN _operator VARCHAR(100)
+)
+BEGIN
+    CALL Order_LockOpen(_orderId);
+
+    IF (SELECT COUNT(*) FROM order_line WHERE order_id = _orderId) = 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'El pedido no tiene lotes asignados.', MYSQL_ERRNO = 120;
+    END IF;
+    IF (SELECT COUNT(*) FROM order_line WHERE order_id = _orderId AND consumed_quantity IS NULL) > 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Falta indicar el consumo real de alguna linea.', MYSQL_ERRNO = 119;
+    END IF;
+
+    UPDATE customer_order SET status = 'CERRADO', closed_by = _operator, closed_at = NOW() WHERE order_id = _orderId;
+
+    INSERT INTO order_event (order_id, event_type, operator) VALUES (_orderId, 'CERRADO', _operator);
+END;;
+
+CREATE OR REPLACE PROCEDURE `Order_Cancel`(
+    IN _orderId INT,
+    IN _operator VARCHAR(100)
+)
+BEGIN
+    CALL Order_LockOpen(_orderId);
+
+    UPDATE product_lot pl
+        JOIN order_line ol ON ol.lot_id = pl.lot_id
+    SET pl.reserved_quantity = pl.reserved_quantity - ol.reserved_quantity
+    WHERE ol.order_id = _orderId;
+
+    INSERT INTO order_event (order_id, lot_id, event_type, quantity, operator, notes)
+    SELECT _orderId, lot_id, 'LIBERADO', reserved_quantity, _operator, 'Pedido cancelado'
+    FROM order_line WHERE order_id = _orderId;
+
+    INSERT INTO lot_history (lot_id, action_type, operator, quantity_affected, observations, order_id)
+    SELECT lot_id, 'LIBERADO', _operator, reserved_quantity, 'Pedido cancelado', _orderId
+    FROM order_line WHERE order_id = _orderId;
+
+    UPDATE customer_order SET status = 'CANCELADO', closed_by = _operator, closed_at = NOW() WHERE order_id = _orderId;
+
+    INSERT INTO order_event (order_id, event_type, operator) VALUES (_orderId, 'CANCELADO', _operator);
+END;;
+
+-- Lotes en uso: reservados en pedidos abiertos, opcionalmente de un rango de dias
+CREATE OR REPLACE PROCEDURE `OrderLine_GetInUse`(
+    IN _from BIGINT,
+    IN _to BIGINT
+)
+BEGIN
+    SELECT ol.line_id, ol.order_id, co.order_number, co.customer_name, ol.lot_id, pl.lot_number, p.name AS product_name,
+           p.sku AS product_sku, pl.measure_unit, ol.reserved_quantity,
+           pl.quantity - pl.consumed_quantity AS current_stock,
+           pl.quantity - pl.consumed_quantity - pl.reserved_quantity AS available_quantity,
+           pl.expiration_date,
+           UNIX_TIMESTAMP(ol.created_at) AS reserved_at
+    FROM order_line ol
+             JOIN customer_order co ON co.order_id = ol.order_id
+             JOIN product_lot pl ON pl.lot_id = ol.lot_id
+             JOIN product p ON p.product_id = pl.product_id
+    WHERE co.status = 'ABIERTO'
+      AND (_from IS NULL OR co.scheduled_date >= _from)
+      AND (_to IS NULL OR co.scheduled_date < _to)
+    ORDER BY p.name, pl.lot_number, co.order_number;
+END;;
+
+-- Pedidos en los que se ha usado un lote
+CREATE OR REPLACE PROCEDURE `Lot_GetOrders`(IN _lotId INT)
+BEGIN
+    SELECT co.order_id, co.order_number, co.customer_name, co.status AS order_status, co.scheduled_date,
+           ol.reserved_quantity, ol.consumed_quantity
+    FROM order_line ol
+             JOIN customer_order co ON co.order_id = ol.order_id
+    WHERE ol.lot_id = _lotId
+    ORDER BY co.scheduled_date DESC, co.order_id DESC;
 END;;
 
 DELIMITER ;

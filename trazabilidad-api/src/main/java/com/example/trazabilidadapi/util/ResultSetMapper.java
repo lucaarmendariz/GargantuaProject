@@ -15,6 +15,10 @@ public class ResultSetMapper {
                 .lotId(rs.getInt("lot_id"))
                 .lotNumber(rs.getString("lot_number"))
                 .initialQuantity(rs.getBigDecimal("initial_quantity"))
+                .reservedQuantity(rs.getBigDecimal("reserved_quantity"))
+                .consumedQuantity(rs.getBigDecimal("consumed_quantity"))
+                .currentStock(rs.getBigDecimal("current_stock"))
+                .availableQuantity(rs.getBigDecimal("available_quantity"))
                 .measureUnit(rs.getString("measure_unit"))
                 .expirationDate(rs.getObject("expiration_date", Long.class))
                 .currentState(rs.getString("current_state"))
@@ -43,6 +47,10 @@ public class ResultSetMapper {
                 .productId(rs.getInt("product_id"))
                 .lotNumber(rs.getString("lot_number"))
                 .quantity(rs.getBigDecimal("quantity"))
+                .reservedQuantity(rs.getBigDecimal("reserved_quantity"))
+                .consumedQuantity(rs.getBigDecimal("consumed_quantity"))
+                .currentStock(rs.getBigDecimal("current_stock"))
+                .availableQuantity(rs.getBigDecimal("available_quantity"))
                 .measureUnit(rs.getString("measure_unit"))
                 .expirationDate(rs.getObject("expiration_date", Long.class))
                 .supplierReference(rs.getString("supplier_reference"))
@@ -61,6 +69,7 @@ public class ResultSetMapper {
                 .quantityAffected(rs.getBigDecimal("quantity_affected"))
                 .ocrRawText(rs.getString("ocr_raw_text"))
                 .observations(rs.getString("observations"))
+                .orderNumber(rs.getString("order_number"))
                 .build();
     }
 
@@ -83,6 +92,10 @@ public class ResultSetMapper {
                 .lotId(rs.getInt("lot_id"))
                 .lotNumber(rs.getString("lot_number"))
                 .initialQuantity(rs.getBigDecimal("initial_quantity"))
+                .reservedQuantity(rs.getBigDecimal("reserved_quantity"))
+                .consumedQuantity(rs.getBigDecimal("consumed_quantity"))
+                .currentStock(rs.getBigDecimal("current_stock"))
+                .availableQuantity(rs.getBigDecimal("available_quantity"))
                 .measureUnit(rs.getString("measure_unit"))
                 .expirationDate(rs.getObject("expiration_date", Long.class))
                 .currentState(rs.getString("current_state"))
@@ -90,6 +103,82 @@ public class ResultSetMapper {
                 .lastOperator(rs.getString("last_operator"))
                 .ocrRawText(rs.getString("ocr_raw_text"))
                 .lastObservations(rs.getString("last_observations"))
+                .build();
+    }
+
+    public static CustomerOrder getOrderFromResultSet(ResultSet rs) throws SQLException {
+        return CustomerOrder.builder()
+                .orderId(rs.getInt("order_id"))
+                .orderNumber(rs.getString("order_number"))
+                .customerName(rs.getString("customer_name"))
+                .scheduledDate(rs.getObject("scheduled_date", Long.class))
+                .status(rs.getString("status"))
+                .notes(rs.getString("notes"))
+                .createdBy(rs.getString("created_by"))
+                .closedBy(rs.getString("closed_by"))
+                .createdAt(rs.getObject("created_at", Long.class))
+                .closedAt(rs.getObject("closed_at", Long.class))
+                .lineCount(rs.getInt("line_count"))
+                .build();
+    }
+
+    public static OrderLine getOrderLineFromResultSet(ResultSet rs) throws SQLException {
+        return OrderLine.builder()
+                .lineId(rs.getInt("line_id"))
+                .orderId(rs.getInt("order_id"))
+                .lotId(rs.getInt("lot_id"))
+                .lotNumber(rs.getString("lot_number"))
+                .productName(rs.getString("product_name"))
+                .productSku(rs.getString("product_sku"))
+                .measureUnit(rs.getString("measure_unit"))
+                .reservedQuantity(rs.getBigDecimal("reserved_quantity"))
+                .consumedQuantity(rs.getBigDecimal("consumed_quantity"))
+                .build();
+    }
+
+    public static OrderEvent getOrderEventFromResultSet(ResultSet rs) throws SQLException {
+        return OrderEvent.builder()
+                .eventId(rs.getInt("event_id"))
+                .orderId(rs.getInt("order_id"))
+                .lotId(rs.getObject("lot_id", Integer.class))
+                .lotNumber(rs.getString("lot_number"))
+                .measureUnit(rs.getString("measure_unit"))
+                .eventType(rs.getString("event_type"))
+                .quantity(rs.getBigDecimal("quantity"))
+                .operator(rs.getString("operator"))
+                .notes(rs.getString("notes"))
+                .eventTimestamp(rs.getObject("event_timestamp", Long.class))
+                .build();
+    }
+
+    public static InUseLine getInUseLineFromResultSet(ResultSet rs) throws SQLException {
+        return InUseLine.builder()
+                .lineId(rs.getInt("line_id"))
+                .orderId(rs.getInt("order_id"))
+                .orderNumber(rs.getString("order_number"))
+                .customerName(rs.getString("customer_name"))
+                .lotId(rs.getInt("lot_id"))
+                .lotNumber(rs.getString("lot_number"))
+                .productName(rs.getString("product_name"))
+                .productSku(rs.getString("product_sku"))
+                .measureUnit(rs.getString("measure_unit"))
+                .reservedQuantity(rs.getBigDecimal("reserved_quantity"))
+                .currentStock(rs.getBigDecimal("current_stock"))
+                .availableQuantity(rs.getBigDecimal("available_quantity"))
+                .expirationDate(rs.getObject("expiration_date", Long.class))
+                .reservedAt(rs.getObject("reserved_at", Long.class))
+                .build();
+    }
+
+    public static LotOrderUsage getLotOrderUsageFromResultSet(ResultSet rs) throws SQLException {
+        return LotOrderUsage.builder()
+                .orderId(rs.getInt("order_id"))
+                .orderNumber(rs.getString("order_number"))
+                .customerName(rs.getString("customer_name"))
+                .orderStatus(rs.getString("order_status"))
+                .scheduledDate(rs.getObject("scheduled_date", Long.class))
+                .reservedQuantity(rs.getBigDecimal("reserved_quantity"))
+                .consumedQuantity(rs.getBigDecimal("consumed_quantity"))
                 .build();
     }
 }

@@ -20,6 +20,11 @@ public class ProductLotController {
         this.service = service;
     }
 
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<String> handleConflict(IllegalStateException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
+    }
+
     // 2.1 CREATE: Crear un nuevo lote
     @PostMapping
     public ResponseEntity<Integer> createLot(@RequestBody ProductLot productLot) {
