@@ -5,12 +5,13 @@ import com.example.trazabilidadapi.services.LotHistoryService;
 import com.example.trazabilidadapi.services.ProductLotService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/historial")
-@CrossOrigin(origins = "*")
 public class LotHistoryController {
 
     private final LotHistoryService service;
@@ -30,7 +31,9 @@ public class LotHistoryController {
     }
 
     @PostMapping("/escanear")
-    public ResponseEntity<String> createOcrEntry(@RequestBody LotHistory history) {
+    public ResponseEntity<String> createOcrEntry(@RequestBody LotHistory history, @AuthenticationPrincipal Jwt jwt) {
+        // El operario sale de la sesion, no de lo que envie el cliente
+        history.setOperator(jwt.getClaimAsString("name"));
         boolean success = service.registerOcrScan(history);
         if (success) {
             return ResponseEntity.status(HttpStatus.CREATED).body("Escaneo del OCR registrado correctamente.");

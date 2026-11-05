@@ -1,15 +1,13 @@
-version: '3.8'
-
 services:
   db:
     image: mariadb:11.4
     container_name: trazabilidad_db
     restart: always
     environment:
-      MARIADB_ROOT_PASSWORD: root
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Falta database/.env, copia .env.example}
       MARIADB_DATABASE: traceability_lean
       MARIADB_USER: trazabilidad_app
-      MARIADB_PASSWORD: MonCorpPass2026!
+      MARIADB_PASSWORD: ${DB_PASSWORD:?Falta database/.env, copia .env.example}
     ports:
       - "127.0.0.1:3307:3306"
     volumes:

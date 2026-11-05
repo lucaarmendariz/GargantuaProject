@@ -30,7 +30,6 @@ const submitProductionLog = async () => {
     const responseMessage = await apiClient.post('/historial/escanear', {
       lotId: parseInt(lotId.value),
       actionType: actionType.value,
-      operator: operatorName.value,
       quantityAffected: quantityAffected.value ? parseFloat(quantityAffected.value) : null,
       ocrRawText: ocrRawText.value || `MANUAL_ENTRY_PROD_FLOOR_${Date.now()}`,
       observations: observations.value

@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import apiClient from '../api';
+import { clearSession } from '../utils/session';
 import { formatEpochDateTime } from '../utils/date';
 
 const user = ref(null);
@@ -128,7 +129,7 @@ const searchLot = async () => {
 };
 
 const logout = () => {
-  localStorage.removeItem('user');
+  clearSession();
   router.push('/');
 };
 </script>
