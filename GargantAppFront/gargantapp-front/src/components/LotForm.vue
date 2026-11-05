@@ -1,6 +1,7 @@
 <script setup>
 import { ref } from 'vue';
 import apiClient from '../api';
+import { dateInputToEpoch } from '../utils/date';
 
 defineProps({
   products: { type: Array, required: true }
@@ -27,7 +28,7 @@ const handleCreateLot = async () => {
       lotNumber: lotNumber.value,
       quantity: parseFloat(lotQuantity.value),
       measureUnit: lotMeasureUnit.value,
-      expirationDate: lotExpirationDate.value ? new Date(lotExpirationDate.value).getTime() : null,
+      expirationDate: dateInputToEpoch(lotExpirationDate.value),
       supplierReference: lotSupplierReference.value
     });
 

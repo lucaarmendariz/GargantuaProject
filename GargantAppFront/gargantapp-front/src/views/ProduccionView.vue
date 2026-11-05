@@ -74,7 +74,7 @@ const submitProductionLog = async () => {
 
           <div class="form-group">
             <label>Cantidad Afectada:</label>
-            <input v-model="quantityAffected" type="number" step="0.01" placeholder="Ej: 50.00" />
+            <input v-model="quantityAffected" type="number" step="0.0001" placeholder="Ej: 50.00" />
           </div>
 
           <div class="form-group">

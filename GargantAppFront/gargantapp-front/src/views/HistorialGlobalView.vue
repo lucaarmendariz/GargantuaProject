@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import apiClient from '../api';
+import { formatEpochDateTime } from '../utils/date';
 
 const lotIdInput = ref('');
 const historyLogs = ref([]);
@@ -18,7 +19,9 @@ const fetchHistory = async () => {
   } catch (error) {
     historyLogs.value = [];
     searchDone.value = true;
-    errorMsg.value = 'No se encontraron registros de auditoría para este ID de lote.';
+    errorMsg.value = error?.status === 404
+      ? 'No existe ningún lote con este ID.'
+      : 'No se pudo conectar con el servidor. Inténtalo de nuevo.';
   }
 };
 </script>
@@ -46,7 +49,7 @@ const fetchHistory = async () => {
           <div class="timeline-panel">
             <div class="timeline-heading">
               <span class="action-title">{{ log.actionType }}</span>
-              <span class="action-time">⏱️ {{ log.actionTimestamp }}</span>
+              <span class="action-time">⏱️ {{ formatEpochDateTime(log.actionTimestamp) }}</span>
             </div>
             <div class="timeline-body">
               <p><strong>Operario en planta:</strong> {{ log.operator }}</p>

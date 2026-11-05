@@ -21,14 +21,12 @@ public class UserRepository {
     }
 
     public AppUser findByUsername(String username) {
-        try {
-            Connection conn = Objects.requireNonNull(jdbcTemplate.getDataSource()).getConnection();
-            try (CallableStatement stmt = conn.prepareCall("{call AppUser_FindByUsername(?)}")) {
-                stmt.setString(1, username);
-                try (ResultSet rs = stmt.executeQuery()) {
-                    if (rs.next()) {
-                        return ResultSetMapper.getAppUserFromResultSet(rs);
-                    }
+        try (Connection conn = Objects.requireNonNull(jdbcTemplate.getDataSource()).getConnection();
+             CallableStatement stmt = conn.prepareCall("{call AppUser_FindByUsername(?)}")) {
+            stmt.setString(1, username);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return ResultSetMapper.getAppUserFromResultSet(rs);
                 }
             }
         } catch (SQLException e) {

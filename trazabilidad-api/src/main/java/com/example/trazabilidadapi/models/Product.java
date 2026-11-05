@@ -2,7 +2,6 @@ package com.example.trazabilidadapi.models;
 
 import lombok.*;
 
-import java.time.LocalDateTime;
 
 @Builder
 @Data
@@ -14,6 +13,6 @@ public class Product {
     private String name;
     private String description;
     private boolean isActive;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+    private Long createdAt;
+    private Long updatedAt;
 }

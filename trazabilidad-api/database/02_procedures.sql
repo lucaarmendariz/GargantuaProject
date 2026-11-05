@@ -17,7 +17,7 @@ BEGIN
         pl.measure_unit,
         pl.expiration_date,
         lh.action_type AS current_state,
-        lh.action_timestamp AS last_update,
+        UNIX_TIMESTAMP(lh.action_timestamp) AS last_update,
         lh.operator AS last_operator,
         lh.ocr_raw_text,
         lh.observations AS last_observations
@@ -32,25 +32,25 @@ END;;
 -- 2. Obtener todos los productos activos
 CREATE OR REPLACE PROCEDURE `Product_FindAll`()
 BEGIN
-    SELECT * FROM product WHERE is_active = 1;
+    SELECT product_id, sku, name, description, is_active, UNIX_TIMESTAMP(created_at) AS created_at, UNIX_TIMESTAMP(updated_at) AS updated_at FROM product WHERE is_active = 1;
 END;;
 
 -- 3. Obtener un producto por su ID único
 CREATE OR REPLACE PROCEDURE `Product_FindById`(IN _productId INT)
 BEGIN
-    SELECT * FROM product WHERE product_id = _productId;
+    SELECT product_id, sku, name, description, is_active, UNIX_TIMESTAMP(created_at) AS created_at, UNIX_TIMESTAMP(updated_at) AS updated_at FROM product WHERE product_id = _productId;
 END;;
 
 -- 4. Obtener todos los lotes asociados a un producto específico
 CREATE OR REPLACE PROCEDURE `ProductLot_FindByProductId`(IN _productId INT)
 BEGIN
-    SELECT * FROM product_lot WHERE product_id = _productId;
+    SELECT lot_id, product_id, lot_number, quantity, measure_unit, expiration_date, supplier_reference, UNIX_TIMESTAMP(created_at) AS created_at, UNIX_TIMESTAMP(updated_at) AS updated_at FROM product_lot WHERE product_id = _productId;
 END;;
 
 -- 5. Obtener el historial cronológico completo de un lote
 CREATE OR REPLACE PROCEDURE `LotHistory_FindByLotId`(IN _lotId INT)
 BEGIN
-    SELECT * FROM lot_history WHERE lot_id = _lotId ORDER BY history_id DESC;
+    SELECT history_id, lot_id, action_type, operator, UNIX_TIMESTAMP(action_timestamp) AS action_timestamp, quantity_affected, ocr_raw_text, observations FROM lot_history WHERE lot_id = _lotId ORDER BY history_id DESC;
 END;;
 
 -- 6. Insertar un nuevo movimiento/escaneo en el historial (MODIFICADO CON PARÁMETRO OUT)
@@ -98,13 +98,13 @@ END;;
 -- 1.2 READ (ALL): Listar todo el catálogo para administración
 CREATE OR REPLACE PROCEDURE `Product_GetAll`()
 BEGIN
-    SELECT * FROM product ORDER BY name ASC;
+    SELECT product_id, sku, name, description, is_active, UNIX_TIMESTAMP(created_at) AS created_at, UNIX_TIMESTAMP(updated_at) AS updated_at FROM product ORDER BY name ASC;
 END;;
 
 -- 1.3 READ (ACTIVE): Listar solo productos activos (para la app de día a día)
 CREATE OR REPLACE PROCEDURE `Product_FindAll`()
 BEGIN
-    SELECT * FROM product WHERE is_active = 1 ORDER BY name ASC;
+    SELECT product_id, sku, name, description, is_active, UNIX_TIMESTAMP(created_at) AS created_at, UNIX_TIMESTAMP(updated_at) AS updated_at FROM product WHERE is_active = 1 ORDER BY name ASC;
 END;;
 
 -- 1.4 READ (BY ID): Buscar un producto específico
@@ -112,7 +112,7 @@ CREATE OR REPLACE PROCEDURE `Product_FindById`(
     IN _productId INT
 )
 BEGIN
-    SELECT * FROM product WHERE product_id = _productId;
+    SELECT product_id, sku, name, description, is_active, UNIX_TIMESTAMP(created_at) AS created_at, UNIX_TIMESTAMP(updated_at) AS updated_at FROM product WHERE product_id = _productId;
 END;;
 
 -- 1.5 UPDATE: Modificar datos del producto
@@ -156,7 +156,7 @@ CREATE OR REPLACE PROCEDURE `ProductLot_Create`(
     IN _lotNumber VARCHAR(100),
     IN _quantity DECIMAL(12,4),
     IN _measureUnit VARCHAR(20),
-    IN _expirationDate INT(11),
+    IN _expirationDate BIGINT,
     IN _supplierReference VARCHAR(100),
     OUT _newLotId INT
 )
@@ -180,7 +180,7 @@ END;;
 -- 2.2 READ (ALL): Ver todos los lotes en el sistema
 CREATE OR REPLACE PROCEDURE `ProductLot_GetAll`()
 BEGIN
-    SELECT * FROM product_lot ORDER BY created_at DESC;
+    SELECT lot_id, product_id, lot_number, quantity, measure_unit, expiration_date, supplier_reference, UNIX_TIMESTAMP(created_at) AS created_at, UNIX_TIMESTAMP(updated_at) AS updated_at FROM product_lot ORDER BY created_at DESC;
 END;;
 
 -- 2.3 READ (BY PRODUCT ID): Ver los lotes de un producto específico
@@ -188,7 +188,7 @@ CREATE OR REPLACE PROCEDURE `ProductLot_FindByProductId`(
     IN _productId INT
 )
 BEGIN
-    SELECT * FROM product_lot WHERE product_id = _productId ORDER BY expiration_date ASC;
+    SELECT lot_id, product_id, lot_number, quantity, measure_unit, expiration_date, supplier_reference, UNIX_TIMESTAMP(created_at) AS created_at, UNIX_TIMESTAMP(updated_at) AS updated_at FROM product_lot WHERE product_id = _productId ORDER BY expiration_date ASC;
 END;;
 
 -- 2.4 READ (BY ID): Buscar un lote por su ID interno
@@ -196,7 +196,7 @@ CREATE OR REPLACE PROCEDURE `ProductLot_FindById`(
     IN _lotId INT
 )
 BEGIN
-    SELECT * FROM product_lot WHERE lot_id = _lotId;
+    SELECT lot_id, product_id, lot_number, quantity, measure_unit, expiration_date, supplier_reference, UNIX_TIMESTAMP(created_at) AS created_at, UNIX_TIMESTAMP(updated_at) AS updated_at FROM product_lot WHERE lot_id = _lotId;
 END;;
 
 -- 2.5 UPDATE: Modificar stock o datos de un lote
@@ -204,7 +204,7 @@ CREATE OR REPLACE PROCEDURE `ProductLot_Update`(
     IN _lotId INT,
     IN _quantity DECIMAL(12,4),
     IN _measureUnit VARCHAR(20),
-    IN _expirationDate INT(11),
+    IN _expirationDate BIGINT,
     IN _supplierReference VARCHAR(100)
 )
 BEGIN
@@ -263,7 +263,7 @@ CREATE OR REPLACE PROCEDURE `LotHistory_FindByLotId`(
     IN _lotId INT
 )
 BEGIN
-    SELECT * FROM lot_history WHERE lot_id = _lotId ORDER BY action_timestamp DESC;
+    SELECT history_id, lot_id, action_type, operator, UNIX_TIMESTAMP(action_timestamp) AS action_timestamp, quantity_affected, ocr_raw_text, observations FROM lot_history WHERE lot_id = _lotId ORDER BY action_timestamp DESC;
 END;;
 
 -- 3.3 TRACEABILITY ENGINE: El motor principal del OCR
@@ -285,7 +285,7 @@ BEGIN
         pl.measure_unit,
         pl.expiration_date,
         lh.action_type AS current_state,
-        lh.action_timestamp AS last_update,
+        UNIX_TIMESTAMP(lh.action_timestamp) AS last_update,
         lh.operator AS last_operator,
         lh.ocr_raw_text,
         lh.observations AS last_observations

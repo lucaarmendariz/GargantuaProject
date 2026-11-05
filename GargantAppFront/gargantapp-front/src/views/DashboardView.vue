@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import apiClient from '../api';
+import { formatEpochDateTime } from '../utils/date';
 
 const user = ref(null);
 const lotInput = ref('');
@@ -120,7 +121,9 @@ const searchLot = async () => {
     lotData.value = null;
     lotData.value = await apiClient.get(`/trazabilidad/lotes/${lotInput.value}/status`);
   } catch (err) {
-    errorMsg.value = 'El lote escaneado no existe o no tiene historial registrado.';
+    errorMsg.value = err?.status === 404
+      ? 'El lote escaneado no existe o no tiene historial registrado.'
+      : 'No se pudo conectar con el servidor. Inténtalo de nuevo.';
   }
 };
 
@@ -226,7 +229,7 @@ const logout = () => {
               </tr>
               <tr>
                 <th>Última Actualización:</th>
-                <td>{{ lotData.lastUpdate }}</td>
+                <td>{{ formatEpochDateTime(lotData.lastUpdate) }}</td>
               </tr>
               <tr>
                 <th>Último Operario:</th>

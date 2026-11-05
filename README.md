@@ -48,7 +48,7 @@ cd GargantuaProject
 Con Docker:
 
 ```bash
-docker run --name mariadb-gargantua -e MARIADB_ROOT_PASSWORD=<tu_clave> -e MARIADB_DATABASE=<nombre_bd> -p 3306:3306 -d mariadb:lts
+docker run --name mariadb-gargantua -e MARIADB_ROOT_PASSWORD=<tu_clave> -e MARIADB_DATABASE=<nombre_bd> -p 127.0.0.1:3307:3306 -d mariadb:lts
 ```
 
 Después, carga o actualiza las tablas con los scripts de `trazabilidad-api/database`:
@@ -67,7 +67,7 @@ bash update_db.sh
 3. Configura la conexión en `src/main/resources/application.properties`:
 
    ```properties
-   spring.datasource.url=jdbc:mariadb://localhost:3306/<nombre_bd>
+   spring.datasource.url=jdbc:mariadb://localhost:3307/<nombre_bd>
    spring.datasource.username=<usuario>
    spring.datasource.password=<contraseña>
    ```

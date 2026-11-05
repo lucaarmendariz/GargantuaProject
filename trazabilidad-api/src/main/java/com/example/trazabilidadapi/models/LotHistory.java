@@ -3,7 +3,6 @@ package com.example.trazabilidadapi.models;
 import lombok.*;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
 @Builder
 @Data
@@ -14,7 +13,7 @@ public class LotHistory {
     private int lotId;
     private String actionType;
     private String operator;
-    private LocalDateTime actionTimestamp;
+    private Long actionTimestamp;
     private BigDecimal quantityAffected;
     private String ocrRawText;
     private String observations;

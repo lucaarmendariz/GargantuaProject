@@ -14,7 +14,7 @@ public class ResultSetMapper {
                 .productName(rs.getString("product_name"))
                 .lotId(rs.getInt("lot_id"))
                 .lotNumber(rs.getString("lot_number"))
-                .initialQuantity(rs.getInt("initial_quantity"))
+                .initialQuantity(rs.getBigDecimal("initial_quantity"))
                 .measureUnit(rs.getString("measure_unit"))
                 .expirationDate(rs.getObject("expiration_date", Long.class))
                 .currentState(rs.getString("current_state"))
@@ -32,8 +32,8 @@ public class ResultSetMapper {
                 .name(rs.getString("name"))
                 .description(rs.getString("description"))
                 .isActive(rs.getBoolean("is_active"))
-                .createdAt(rs.getTimestamp("created_at") != null ? rs.getTimestamp("created_at").toLocalDateTime() : null)
-                .updatedAt(rs.getTimestamp("updated_at") != null ? rs.getTimestamp("updated_at").toLocalDateTime() : null)
+                .createdAt(rs.getObject("created_at", Long.class))
+                .updatedAt(rs.getObject("updated_at", Long.class))
                 .build();
     }
 
@@ -42,12 +42,12 @@ public class ResultSetMapper {
                 .lotId(rs.getInt("lot_id"))
                 .productId(rs.getInt("product_id"))
                 .lotNumber(rs.getString("lot_number"))
-                .quantity(rs.getInt("quantity"))
+                .quantity(rs.getBigDecimal("quantity"))
                 .measureUnit(rs.getString("measure_unit"))
                 .expirationDate(rs.getObject("expiration_date", Long.class))
                 .supplierReference(rs.getString("supplier_reference"))
-                .createdAt(rs.getTimestamp("created_at") != null ? rs.getTimestamp("created_at").toLocalDateTime() : null)
-                .updatedAt(rs.getTimestamp("updated_at") != null ? rs.getTimestamp("updated_at").toLocalDateTime() : null)
+                .createdAt(rs.getObject("created_at", Long.class))
+                .updatedAt(rs.getObject("updated_at", Long.class))
                 .build();
     }
 
@@ -57,7 +57,7 @@ public class ResultSetMapper {
                 .lotId(rs.getInt("lot_id"))
                 .actionType(rs.getString("action_type"))
                 .operator(rs.getString("operator"))
-                .actionTimestamp(rs.getTimestamp("action_timestamp").toLocalDateTime())
+                .actionTimestamp(rs.getObject("action_timestamp", Long.class))
                 .quantityAffected(rs.getBigDecimal("quantity_affected"))
                 .ocrRawText(rs.getString("ocr_raw_text"))
                 .observations(rs.getString("observations"))
@@ -82,7 +82,7 @@ public class ResultSetMapper {
                 .productName(rs.getString("product_name"))
                 .lotId(rs.getInt("lot_id"))
                 .lotNumber(rs.getString("lot_number"))
-                .initialQuantity(rs.getInt("initial_quantity"))
+                .initialQuantity(rs.getBigDecimal("initial_quantity"))
                 .measureUnit(rs.getString("measure_unit"))
                 .expirationDate(rs.getObject("expiration_date", Long.class))
                 .currentState(rs.getString("current_state"))

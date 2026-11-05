@@ -38,4 +38,4 @@ VALUES (3, 'RECEPCIONADOOO', 'Juanillo', '2026-05-01 12:00:00', 300.0000, 'OCR_R
 -- =================================================================
 -- Usuario de prueba: username 'luca', password 'moncorp2026'
 INSERT INTO app_user (username, password_hash, name, role, is_active)
-VALUES ('luca', 'moncorp2026', 'Luca Armendariz', 'ADMIN', 1);
+VALUES ('luca', '$2a$10$A8ZBNb2G/0/Y4Lv1Ygw8iejFWQ.M5A3UPrxl5I2clCaCyyvhSL8s6', 'Luca Armendariz', 'ADMIN', 1);
