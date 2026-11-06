@@ -38,7 +38,7 @@ onMounted(async () => {
   <div class="content">
     <header class="card-header">
       <h2>Pedidos cerrados</h2>
-      <button @click="router.push('/pedidos')" class="btn-back">Volver</button>
+      <button @click="router.push('/dashboard')" class="btn-back">Volver</button>
     </header>
 
     <div class="card-body">
