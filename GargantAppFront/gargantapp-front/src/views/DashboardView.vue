@@ -225,6 +225,10 @@ const logout = () => {
             <span class="text">Inventario Stock</span>
           </button>
 
+          <button @click="navigateTo('/lotes')" class="menu-btn btn-lotes">
+            <span class="text">Gestión de Lotes</span>
+          </button>
+
           <button @click="navigateTo('/historial-global')" class="menu-btn btn-historial">
             <span class="text">Historial Visibilizar</span>
           </button>

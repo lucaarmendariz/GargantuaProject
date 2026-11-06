@@ -45,4 +45,11 @@ describe('guard del router', () => {
     login('ADMIN');
     expect(await goTo('/historial-global')).toBe('/historial-global');
   });
+
+  it('la gestión de lotes es solo para administrador y encargado', async () => {
+    login('OPERARIO');
+    expect(await goTo('/lotes')).toBe('/dashboard');
+    login('ENCARGADO');
+    expect(await goTo('/lotes')).toBe('/lotes');
+  });
 });
