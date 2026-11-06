@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dateInputToEpoch, dayRange, formatEpochDate, formatEpochDateTime, isExpired, todayInputValue } from '../utils/date';
+import { dateInputToEpoch, dayRange, epochToDateInput, formatEpochDate, formatEpochDateTime, isExpired, todayInputValue } from '../utils/date';
 
 describe('fechas en epoch', () => {
   it('interpreta el valor como segundos, no milisegundos', () => {
@@ -18,6 +18,11 @@ describe('fechas en epoch', () => {
     const date = new Date(epoch * 1000);
     expect([date.getFullYear(), date.getMonth(), date.getDate()]).toEqual([2030, 0, 15]);
     expect(dateInputToEpoch('')).toBeNull();
+  });
+
+  it('convierte segundos al valor del campo de fecha y vuelta', () => {
+    expect(epochToDateInput(dateInputToEpoch('2030-01-15'))).toBe('2030-01-15');
+    expect(epochToDateInput(null)).toBe('');
   });
 
   it('calcula el día completo en hora local, incluso con cambio de hora', () => {

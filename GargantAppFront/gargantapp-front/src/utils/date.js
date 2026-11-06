@@ -16,12 +16,21 @@ export function dateInputToEpoch(value) {
   return Math.floor(new Date(`${value}T00:00:00`).getTime() / 1000);
 }
 
+function toDateInput(date) {
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
 // Valor de hoy para un <input type="date">, en hora local.
 export function todayInputValue() {
-  const now = new Date();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  return `${now.getFullYear()}-${month}-${day}`;
+  return toDateInput(new Date());
+}
+
+// Epoch en segundos convertido al valor de un <input type="date">, en hora local.
+export function epochToDateInput(seconds) {
+  if (seconds === null || seconds === undefined) return '';
+  return toDateInput(new Date(seconds * 1000));
 }
 
 // Inicio del día indicado y del siguiente, en epoch. Sirve también en los cambios de hora.

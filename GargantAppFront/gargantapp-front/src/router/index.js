@@ -7,6 +7,7 @@ import ProduccionView from '../views/ProduccionView.vue'
 import PedidosView from '../views/PedidosView.vue'
 import PedidoDetalleView from '../views/PedidoDetalleView.vue'
 import TrazabilidadLoteView from '../views/TrazabilidadLoteView.vue'
+import LotesView from '../views/LotesView.vue'
 import { getToken, getUser } from '../utils/session';
 
 const router = createRouter({
@@ -53,6 +54,12 @@ const router = createRouter({
       component: PedidoDetalleView,
       props: true,
       meta: { requiresAuth: true }
+    },
+    {
+      path: '/lotes',
+      name: 'lotes',
+      component: LotesView,
+      meta: { requiresAuth: true, roles: ['ADMIN', 'ENCARGADO'] } // Editar y eliminar lotes
     },
     {
       path: '/lotes/:id/trazabilidad',
