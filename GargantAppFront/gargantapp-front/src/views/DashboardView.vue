@@ -5,6 +5,19 @@ import apiClient from '../api';
 import { clearSession } from '../utils/session';
 import { dayRange, formatDayLong, formatEpochDate, formatEpochDateTime, isExpired } from '../utils/date';
 import { errorMessage } from '../utils/errors';
+import { loadLayout, moveItem, resetLayout, saveLayout } from '../utils/dashboardLayout';
+import ModuleIcon from '../components/ModuleIcon.vue';
+
+// Accesos del panel. El calendario es otro bloque más y también se puede mover.
+const MODULES = {
+  pedidos: { label: 'Pedidos', path: '/pedidos' },
+  'pedidos-cerrados': { label: 'Pedidos Cerrados', path: '/pedidos/cerrados' },
+  inventario: { label: 'Inventario Stock', path: '/inventario' },
+  lotes: { label: 'Gestión de Lotes', path: '/lotes' },
+  historial: { label: 'Historial Visibilizar', path: '/historial-global' },
+  produccion: { label: 'Producción Planta', path: '/produccion' },
+};
+const blockLabel = (id) => (id === 'calendario' ? 'Calendario' : MODULES[id].label);
 
 const user = ref(null);
 const lotInput = ref('');
@@ -28,9 +41,67 @@ onMounted(() => {
     router.push('/');
   } else {
     user.value = JSON.parse(savedUser);
+    layout.value = loadLayout(layoutOwner());
     loadDay();
   }
 });
+
+// --- ORDEN PERSONALIZABLE DE LOS BLOQUES ---
+const layout = ref([]);
+const editingLayout = ref(false);
+const dragIndex = ref(null);
+const dropIndex = ref(null);
+const layoutStatus = ref('');
+
+const layoutOwner = () => user.value?.username || user.value?.name || 'anonimo';
+
+const applyLayout = (next, message) => {
+  layout.value = next;
+  saveLayout(layoutOwner(), next);
+  layoutStatus.value = message;
+};
+
+const moveBlock = (from, to) => {
+  if (to < 0 || to >= layout.value.length || from === to) return;
+  const id = layout.value[from];
+  applyLayout(moveItem(layout.value, from, to), `${blockLabel(id)} movido a la posición ${to + 1} de ${layout.value.length}.`);
+};
+
+const onDragStart = (index, event) => {
+  dragIndex.value = index;
+  event.dataTransfer.effectAllowed = 'move';
+  // Firefox necesita algún dato para empezar a arrastrar
+  event.dataTransfer.setData('text/plain', layout.value[index]);
+};
+
+const onDragOver = (index) => {
+  if (dragIndex.value !== null) dropIndex.value = index;
+};
+
+const onDrop = (index) => {
+  if (dragIndex.value !== null) moveBlock(dragIndex.value, index);
+  onDragEnd();
+};
+
+const onDragEnd = () => {
+  dragIndex.value = null;
+  dropIndex.value = null;
+};
+
+const restoreLayout = () => {
+  layout.value = resetLayout(layoutOwner());
+  layoutStatus.value = 'Orden original restablecido.';
+};
+
+const toggleEditing = () => {
+  editingLayout.value = !editingLayout.value;
+  layoutStatus.value = '';
+};
+
+const openModule = (id) => {
+  // Mientras se ordena, pulsar un módulo no navega
+  if (!editingLayout.value) router.push(MODULES[id].path);
+};
 
 // --- LÓGICA DEL MOTOR DEL CALENDARIO ---
 const currentYear = computed(() => currentDate.value.getFullYear());
@@ -149,10 +220,6 @@ const loadDay = async () => {
 watch(selectedDate, loadDay);
 
 // --- RESTO DE FUNCIONES ---
-const navigateTo = (path) => {
-  router.push(path);
-};
-
 const searchLot = async () => {
   try {
     errorMsg.value = '';
@@ -186,62 +253,77 @@ const logout = () => {
 
     <main class="card-body">
 
-      <section class="control-panel">
-
-        <div class="full-calendar-widget panel">
-          <div class="cal-nav">
-            <button @click="prevMonth" class="cal-nav-btn">Anterior</button>
-            <span class="cal-title"><strong>{{ currentMonthName }}</strong> {{ currentYear }}</span>
-            <button @click="nextMonth" class="cal-nav-btn">Siguiente</button>
-          </div>
-          
-          <div class="cal-weekdays">
-            <span v-for="day in weekDays" :key="day" class="weekday-cell">{{ day }}</span>
-          </div>
-          
-          <div class="cal-days-grid">
-            <button 
-              v-for="(dayObj, idx) in calendarDays" 
-              :key="idx"
-              @click="selectDay(dayObj)"
-              class="day-cell"
-              :class="{
-                'outside-month': !dayObj.isCurrentMonth,
-                'today-cell': isToday(dayObj.date),
-                'selected-cell': isSelected(dayObj.date)
-              }"
-            >
-              {{ dayObj.day }}
+      <section class="control-panel" aria-label="Accesos del panel">
+        <div class="layout-toolbar">
+          <p v-if="editingLayout" class="item-meta layout-help">
+            Arrastra los bloques o usa las flechas para ordenarlos. El orden se guarda para tu usuario.
+          </p>
+          <div class="layout-actions">
+            <button v-if="editingLayout" @click="restoreLayout" class="btn-secondary">Restablecer orden</button>
+            <button @click="toggleEditing" :class="editingLayout ? '' : 'btn-secondary'" :aria-pressed="editingLayout">
+              {{ editingLayout ? 'Listo' : 'Personalizar panel' }}
             </button>
           </div>
         </div>
+        <p class="visually-hidden" role="status" aria-live="polite">{{ layoutStatus }}</p>
 
-        <div class="operations-menu">
-          <button @click="navigateTo('/pedidos')" class="menu-btn btn-pedidos">
-            <span class="text">Pedidos</span>
-          </button>
+        <div class="dashboard-grid" :class="{ editing: editingLayout }">
+          <div
+            v-for="(id, index) in layout"
+            :key="id"
+            class="dashboard-block"
+            :class="[`block-${id}`, { dragging: dragIndex === index, 'drop-target': dropIndex === index && dragIndex !== index }]"
+            :draggable="editingLayout"
+            @dragstart="onDragStart(index, $event)"
+            @dragover.prevent="onDragOver(index)"
+            @dragleave="dropIndex = null"
+            @drop.prevent="onDrop(index)"
+            @dragend="onDragEnd"
+          >
+            <div v-if="editingLayout" class="block-controls">
+              <span class="drag-handle" aria-hidden="true">⠿</span>
+              <ModuleIcon :name="id" :size="16" class="block-icon" />
+              <span class="block-name">{{ blockLabel(id) }}</span>
+              <button @click="moveBlock(index, index - 1)" :disabled="index === 0" class="move-btn"
+                :aria-label="`Mover ${blockLabel(id)} antes`" title="Mover antes">←</button>
+              <button @click="moveBlock(index, index + 1)" :disabled="index === layout.length - 1" class="move-btn"
+                :aria-label="`Mover ${blockLabel(id)} después`" title="Mover después">→</button>
+            </div>
 
-          <button @click="navigateTo('/pedidos/cerrados')" class="menu-btn btn-pedidos-cerrados">
-            <span class="text">Pedidos Cerrados</span>
-          </button>
+            <div v-if="id === 'calendario'" class="full-calendar-widget panel">
+              <div class="cal-nav">
+                <button @click="prevMonth" class="cal-nav-btn">Anterior</button>
+                <span class="cal-title"><strong>{{ currentMonthName }}</strong> {{ currentYear }}</span>
+                <button @click="nextMonth" class="cal-nav-btn">Siguiente</button>
+              </div>
 
-          <button @click="navigateTo('/inventario')" class="menu-btn btn-inventario">
-            <span class="text">Inventario Stock</span>
-          </button>
+              <div class="cal-weekdays">
+                <span v-for="day in weekDays" :key="day" class="weekday-cell">{{ day }}</span>
+              </div>
 
-          <button @click="navigateTo('/lotes')" class="menu-btn btn-lotes">
-            <span class="text">Gestión de Lotes</span>
-          </button>
+              <div class="cal-days-grid">
+                <button
+                  v-for="(dayObj, idx) in calendarDays"
+                  :key="idx"
+                  @click="selectDay(dayObj)"
+                  class="day-cell"
+                  :class="{
+                    'outside-month': !dayObj.isCurrentMonth,
+                    'today-cell': isToday(dayObj.date),
+                    'selected-cell': isSelected(dayObj.date)
+                  }"
+                >
+                  {{ dayObj.day }}
+                </button>
+              </div>
+            </div>
 
-          <button @click="navigateTo('/historial-global')" class="menu-btn btn-historial">
-            <span class="text">Historial Visibilizar</span>
-          </button>
-
-          <button @click="navigateTo('/produccion')" class="menu-btn btn-produccion">
-            <span class="text">Producción Planta</span>
-          </button>
+            <button v-else @click="openModule(id)" class="menu-btn" :class="`btn-${id}`" :tabindex="editingLayout ? -1 : 0">
+              <ModuleIcon :name="id" class="menu-icon" />
+              <span class="text">{{ MODULES[id].label }}</span>
+            </button>
+          </div>
         </div>
-
       </section>
 
       <section class="panel day-section">
@@ -371,15 +453,138 @@ const logout = () => {
 }
 
 .control-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Barra para personalizar el orden */
+.layout-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px 16px;
+}
+
+.layout-help {
+  flex: 1 1 260px;
+  margin: 0;
+}
+
+.layout-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Cuadricula de bloques: el calendario ocupa dos columnas. "dense" rellena los
+   huecos que deja al moverlo, para que el panel no quede con espacios vacios. */
+.dashboard-grid {
   display: grid;
-  gap: clamp(16px, 3vw, 24px);
-  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  grid-auto-flow: row dense;
+  grid-auto-rows: minmax(72px, auto);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.dashboard-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.dashboard-block > .menu-btn,
+.dashboard-block > .panel {
+  flex: 1;
+}
+
+.block-calendario {
+  grid-column: 1 / -1;
 }
 
 @media (min-width: 860px) {
-  .control-panel {
-    grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
+  .dashboard-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
+
+  .block-calendario {
+    grid-column: span 2;
+    grid-row: span 3;
+  }
+}
+
+/* Modo personalizar */
+.dashboard-grid.editing .dashboard-block {
+  padding: 6px;
+  border: 2px dashed var(--gargantua-border);
+  border-radius: var(--radius-md);
+  cursor: grab;
+}
+
+.dashboard-grid.editing .menu-btn {
+  pointer-events: none;
+}
+
+.dashboard-block.dragging {
+  opacity: 0.4;
+}
+
+.dashboard-block.drop-target {
+  border-color: var(--gargantua-orange) !important;
+  background: var(--gargantua-cream);
+}
+
+.block-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.drag-handle {
+  color: var(--gargantua-gray);
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.block-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--gargantua-gray);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.move-btn {
+  min-height: 32px;
+  padding: 2px 10px;
+  background: var(--gargantua-white);
+  border-color: var(--gargantua-border);
+  color: var(--gargantua-dark);
+}
+
+.move-btn:hover:not(:disabled) {
+  background: var(--gargantua-cream);
+  border-color: var(--gargantua-orange);
+}
+
+.move-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
 }
 
 /* Calendario */
@@ -467,14 +672,13 @@ const logout = () => {
   color: var(--gargantua-gold);
 }
 
-/* Accesos a las secciones */
-.operations-menu {
-  display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
-}
-
+/* Accesos a las secciones: icono encima del nombre */
 .menu-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   min-height: 72px;
   padding: 16px;
   background: var(--gargantua-white);
@@ -488,6 +692,26 @@ const logout = () => {
   background: var(--gargantua-white);
   border-color: var(--gargantua-orange);
   color: var(--gargantua-orange-dark);
+}
+
+.menu-icon {
+  color: var(--gargantua-orange);
+  transition: transform var(--transition);
+}
+
+.menu-btn:hover .menu-icon {
+  color: var(--gargantua-orange-dark);
+  transform: translateY(-2px);
+}
+
+.block-icon {
+  color: var(--gargantua-orange);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menu-icon {
+    transition: none;
+  }
 }
 
 .day-section h3 {
