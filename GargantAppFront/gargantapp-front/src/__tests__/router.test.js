@@ -39,6 +39,8 @@ describe('guard del router', () => {
     expect(await goTo('/pedidos')).toBe('/pedidos');
     expect(await goTo('/pedidos/5')).toBe('/pedidos/5');
     expect(await goTo('/lotes/3/trazabilidad')).toBe('/lotes/3/trazabilidad');
+    expect(await goTo('/pedidos/cerrados')).toBe('/pedidos/cerrados');
+    expect(router.currentRoute.value.name).toBe('pedidos-cerrados');
   });
 
   it('el administrador entra en el historial', async () => {

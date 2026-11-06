@@ -8,6 +8,6 @@ import java.util.List;
 @Data
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @NoArgsConstructor
-public class CloseOrderRequest {
+public class PrepareOrderRequest {
     private List<LineConsumption> lines;
 }

@@ -2,7 +2,7 @@ package com.example.trazabilidadapi.controllers;
 
 import com.example.trazabilidadapi.exceptions.OrderException;
 import com.example.trazabilidadapi.models.AddOrderLineRequest;
-import com.example.trazabilidadapi.models.CloseOrderRequest;
+import com.example.trazabilidadapi.models.PrepareOrderRequest;
 import com.example.trazabilidadapi.models.CreateOrderRequest;
 import com.example.trazabilidadapi.models.CustomerOrder;
 import com.example.trazabilidadapi.models.InUseLine;
@@ -63,9 +63,17 @@ public class OrderController {
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/pedidos/{orderId}/cerrar")
-    public ResponseEntity<Void> close(@PathVariable int orderId, @RequestBody CloseOrderRequest request, @AuthenticationPrincipal Jwt jwt) {
-        service.close(orderId, request, operator(jwt));
+    // Registra el consumo real de cada lote y deja el pedido PREPARADO
+    @PostMapping("/pedidos/{orderId}/preparar")
+    public ResponseEntity<Void> prepare(@PathVariable int orderId, @RequestBody PrepareOrderRequest request, @AuthenticationPrincipal Jwt jwt) {
+        service.prepare(orderId, request, operator(jwt));
+        return ResponseEntity.noContent().build();
+    }
+
+    // Pedido PREPARADO -> ENTREGADO. Se cerrará solo pasado el plazo configurado
+    @PostMapping("/pedidos/{orderId}/entregar")
+    public ResponseEntity<Void> deliver(@PathVariable int orderId, @AuthenticationPrincipal Jwt jwt) {
+        service.deliver(orderId, operator(jwt));
         return ResponseEntity.noContent().build();
     }
 

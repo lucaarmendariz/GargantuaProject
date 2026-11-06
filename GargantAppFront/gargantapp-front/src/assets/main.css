@@ -232,9 +232,20 @@ textarea {
   color: #854d0e;
 }
 
-.status-CERRADO {
+.status-PREPARADO {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.status-ENTREGADO {
   background: var(--gargantua-success-bg);
   color: var(--gargantua-success);
+}
+
+/* Archivado: ya no requiere acción */
+.status-CERRADO {
+  background: #ece7df;
+  color: var(--gargantua-gray);
 }
 
 .status-CANCELADO,

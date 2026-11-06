@@ -12,7 +12,8 @@ const canManage = computed(() => ['ADMIN', 'ENCARGADO'].includes(getUser()?.role
 const orders = ref([]);
 const loading = ref(true);
 const listError = ref('');
-const statusFilter = ref('');
+const IN_PROGRESS = 'ABIERTO,PREPARADO,ENTREGADO';
+const statusFilter = ref(IN_PROGRESS);
 
 const orderNumber = ref('');
 const customerName = ref('');
@@ -24,8 +25,8 @@ const loadOrders = async () => {
   loading.value = true;
   listError.value = '';
   try {
-    const query = statusFilter.value ? `?estado=${statusFilter.value}` : '';
-    orders.value = await apiClient.get(`/pedidos${query}`);
+    // Los pedidos cerrados tienen su propio apartado
+    orders.value = await apiClient.get(`/pedidos?estado=${statusFilter.value}`);
   } catch (error) {
     orders.value = [];
     listError.value = await errorMessage(error, 'No se pudieron cargar los pedidos.');
@@ -61,6 +62,11 @@ watch(statusFilter, loadOrders);
     </header>
 
     <div class="card-body">
+      <p class="item-meta flow-help">
+        Ciclo de un pedido: Abierto → Preparado → Entregado → Cerrado (automático a los 2 días de la entrega).
+        <RouterLink to="/pedidos/cerrados">Ver pedidos cerrados</RouterLink>
+      </p>
+
       <section v-if="canManage" class="panel">
         <h3>Nuevo pedido</h3>
         <form @submit.prevent="createOrder" class="order-form">
@@ -93,9 +99,10 @@ watch(statusFilter, loadOrders);
           <div class="form-group filter">
             <label for="order-filter">Estado:</label>
             <select id="order-filter" v-model="statusFilter">
-              <option value="">Todos</option>
+              <option :value="IN_PROGRESS">En curso</option>
               <option value="ABIERTO">Abiertos</option>
-              <option value="CERRADO">Cerrados</option>
+              <option value="PREPARADO">Preparados</option>
+              <option value="ENTREGADO">Entregados</option>
               <option value="CANCELADO">Cancelados</option>
             </select>
           </div>

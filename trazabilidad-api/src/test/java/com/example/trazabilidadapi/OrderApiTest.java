@@ -1,7 +1,9 @@
 package com.example.trazabilidadapi;
 
+import com.example.trazabilidadapi.services.OrderService;
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.ResultActions;
@@ -17,7 +19,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.hamcrest.Matchers.closeTo;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -26,6 +30,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class OrderApiTest extends IntegrationTestBase {
+
+    @Autowired
+    private OrderService orderService;
 
     private static final AtomicInteger SEQ = new AtomicInteger();
     private static final long DAY = 1800000000L;
@@ -65,8 +72,8 @@ class OrderApiTest extends IntegrationTestBase {
                 .content("{\"lotId\":" + lot + ",\"quantity\":" + quantity + "}"));
     }
 
-    private ResultActions close(int order, String lines) throws Exception {
-        return mvc.perform(admin(post("/api/pedidos/" + order + "/cerrar")).content("{\"lines\":[" + lines + "]}"));
+    private ResultActions prepare(int order, String lines) throws Exception {
+        return mvc.perform(admin(post("/api/pedidos/" + order + "/preparar")).content("{\"lines\":[" + lines + "]}"));
     }
 
     private String consumption(int line, double quantity) {
@@ -88,27 +95,27 @@ class OrderApiTest extends IntegrationTestBase {
     }
 
     @Test
-    void closingSubtractsRealConsumptionAndReleasesRest() throws Exception {
+    void preparingSubtractsRealConsumptionAndReleasesRest() throws Exception {
         int lot = lot(50);
         int order = order();
         int line = body(addLine(order, lot, 10));
 
-        close(order, consumption(line, 7.25)).andExpect(status().isNoContent());
+        prepare(order, consumption(line, 7.25)).andExpect(status().isNoContent());
 
         assertLot(lot, 42.75, 0, 42.75);
         mvc.perform(admin(get("/api/pedidos/" + order)))
-                .andExpect(jsonPath("$.order.status").value("CERRADO"))
-                .andExpect(jsonPath("$.order.closedBy").value("Usuario Test"))
+                .andExpect(jsonPath("$.order.status").value("PREPARADO"))
+                .andExpect(jsonPath("$.order.preparedBy").value("Usuario Test"))
                 .andExpect(jsonPath("$.lines[0].consumedQuantity", closeTo(7.25, 0.0001)));
     }
 
     @Test
-    void closingCanConsumeMoreThanReservedIfAvailable() throws Exception {
+    void preparingCanConsumeMoreThanReservedIfAvailable() throws Exception {
         int lot = lot(20);
         int order = order();
         int line = body(addLine(order, lot, 10));
 
-        close(order, consumption(line, 15)).andExpect(status().isNoContent());
+        prepare(order, consumption(line, 15)).andExpect(status().isNoContent());
         assertLot(lot, 5, 0, 5);
     }
 
@@ -122,7 +129,7 @@ class OrderApiTest extends IntegrationTestBase {
 
         int second = order();
         body(addLine(second, lot, 2));
-        close(first, consumption(firstLine, 9)).andExpect(status().isConflict());
+        prepare(first, consumption(firstLine, 9)).andExpect(status().isConflict());
         assertLot(lot, 10, 10, 0);
     }
 
@@ -150,14 +157,14 @@ class OrderApiTest extends IntegrationTestBase {
     }
 
     @Test
-    void closeIsAllOrNothing() throws Exception {
+    void prepareIsAllOrNothing() throws Exception {
         int goodLot = lot(10);
         int badLot = lot(5);
         int order = order();
         int goodLine = body(addLine(order, goodLot, 5));
         int badLine = body(addLine(order, badLot, 5));
 
-        close(order, consumption(goodLine, 5) + "," + consumption(badLine, 6)).andExpect(status().isConflict());
+        prepare(order, consumption(goodLine, 5) + "," + consumption(badLine, 6)).andExpect(status().isConflict());
 
         assertLot(goodLot, 10, 5, 5);
         assertLot(badLot, 5, 5, 0);
@@ -167,25 +174,25 @@ class OrderApiTest extends IntegrationTestBase {
     }
 
     @Test
-    void closeRequiresEveryLine() throws Exception {
+    void prepareRequiresEveryLine() throws Exception {
         int order = order();
         int line = body(addLine(order, lot(5), 1));
         body(addLine(order, lot(5), 1));
 
-        close(order, consumption(line, 1)).andExpect(status().isConflict());
+        prepare(order, consumption(line, 1)).andExpect(status().isConflict());
     }
 
     @Test
-    void emptyOrderCannotClose() throws Exception {
-        close(order(), "").andExpect(status().isConflict());
+    void emptyOrderCannotBePrepared() throws Exception {
+        prepare(order(), "").andExpect(status().isConflict());
     }
 
     @Test
-    void closedOrderIsLocked() throws Exception {
+    void preparedOrderIsLocked() throws Exception {
         int lot = lot(10);
         int order = order();
         int line = body(addLine(order, lot, 1));
-        close(order, consumption(line, 1)).andExpect(status().isNoContent());
+        prepare(order, consumption(line, 1)).andExpect(status().isNoContent());
 
         addLine(order, lot(5), 1).andExpect(status().isConflict());
         mvc.perform(admin(post("/api/pedidos/" + order + "/cancelar"))).andExpect(status().isConflict());
@@ -208,7 +215,7 @@ class OrderApiTest extends IntegrationTestBase {
                         "{\"lotId\":" + lot + ",\"actionType\":\"BLOQUEADO\",\"quantityAffected\":10}"))
                 .andExpect(status().isCreated());
 
-        close(order, consumption(line, 2)).andExpect(status().isConflict());
+        prepare(order, consumption(line, 2)).andExpect(status().isConflict());
 
         String number = JsonPath.read(mvc.perform(admin(get("/api/lotes/" + lot))).andReturn().getResponse().getContentAsString(), "$.lotNumber");
         body(addLine(order(), lot(1), 1));
@@ -270,7 +277,7 @@ class OrderApiTest extends IntegrationTestBase {
     }
 
     @Test
-    void closingOrdersWithLotsInOppositeOrderKeepsStockConsistent() throws Exception {
+    void preparingOrdersWithLotsInOppositeOrderKeepsStockConsistent() throws Exception {
         int lotA = lot(1000);
         int lotB = lot(1000);
         String auth = bearer("ADMIN");
@@ -281,7 +288,7 @@ class OrderApiTest extends IntegrationTestBase {
             int first = body(addLine(order, i % 2 == 0 ? lotA : lotB, 1));
             int second = body(addLine(order, i % 2 == 0 ? lotB : lotA, 1));
             String payload = "{\"lines\":[" + consumption(first, 1) + "," + consumption(second, 1) + "]}";
-            Callable<Integer> task = () -> mvc.perform(post("/api/pedidos/" + order + "/cerrar")
+            Callable<Integer> task = () -> mvc.perform(post("/api/pedidos/" + order + "/preparar")
                             .header(HttpHeaders.AUTHORIZATION, auth).contentType(MediaType.APPLICATION_JSON).content(payload))
                     .andReturn().getResponse().getStatus();
             results.add(pool.submit(task));
@@ -306,19 +313,19 @@ class OrderApiTest extends IntegrationTestBase {
     void dayFilterAndInUseOnlyShowThatDay() throws Exception {
         long day = 1900000000L;
         int open = order(day);
-        int closed = order(day + 3600);
+        int prepared = order(day + 3600);
         int otherDay = order(day + 86400);
         int lot = lot(20);
         addLine(open, lot, 1).andExpect(status().isCreated());
-        int closedLine = body(addLine(closed, lot, 1));
-        close(closed, consumption(closedLine, 1)).andExpect(status().isNoContent());
+        int preparedLine = body(addLine(prepared, lot, 1));
+        prepare(prepared, consumption(preparedLine, 1)).andExpect(status().isNoContent());
         addLine(otherDay, lot, 1).andExpect(status().isCreated());
 
         String range = "?desde=" + day + "&hasta=" + (day + 86400);
         mvc.perform(admin(get("/api/pedidos" + range)))
                 .andExpect(jsonPath("$", hasSize(2)))
                 .andExpect(jsonPath("$[?(@.orderId == " + open + ")].status").value("ABIERTO"))
-                .andExpect(jsonPath("$[?(@.orderId == " + closed + ")].status").value("CERRADO"));
+                .andExpect(jsonPath("$[?(@.orderId == " + prepared + ")].status").value("PREPARADO"));
         mvc.perform(admin(get("/api/pedidos/en-uso" + range)))
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].orderId").value(open))
@@ -332,19 +339,19 @@ class OrderApiTest extends IntegrationTestBase {
         int lot = lot(10);
         int order = order();
         int line = body(addLine(order, lot, 4));
-        close(order, consumption(line, 3)).andExpect(status().isNoContent());
+        prepare(order, consumption(line, 3)).andExpect(status().isNoContent());
 
         mvc.perform(admin(get("/api/lotes/" + lot + "/trazabilidad")))
                 .andExpect(jsonPath("$.lot.currentStock", closeTo(7, 0.0001)))
                 .andExpect(jsonPath("$.product.sku").value("MON-CHE-001"))
                 .andExpect(jsonPath("$.orders[0].orderId").value(order))
-                .andExpect(jsonPath("$.orders[0].orderStatus").value("CERRADO"))
+                .andExpect(jsonPath("$.orders[0].orderStatus").value("PREPARADO"))
                 .andExpect(jsonPath("$.orders[0].consumedQuantity", closeTo(3, 0.0001)))
                 .andExpect(jsonPath("$.history[0].actionType").value("CONSUMIDO"))
                 .andExpect(jsonPath("$.history[0].orderNumber").isNotEmpty())
                 .andExpect(jsonPath("$.history[1].actionType").value("RESERVADO"));
         mvc.perform(admin(get("/api/pedidos/" + order)))
-                .andExpect(jsonPath("$.events[0].eventType").value("CERRADO"))
+                .andExpect(jsonPath("$.events[0].eventType").value("PREPARADO"))
                 .andExpect(jsonPath("$.events[1].eventType").value("CONSUMIDO"))
                 .andExpect(jsonPath("$.events[2].eventType").value("RESERVADO"))
                 .andExpect(jsonPath("$.events[3].eventType").value("CREADO"))
@@ -373,8 +380,73 @@ class OrderApiTest extends IntegrationTestBase {
         mvc.perform(as("OPERARIO", post("/api/pedidos/" + order + "/cancelar"))).andExpect(status().isForbidden());
         mvc.perform(as("OPERARIO", delete("/api/pedidos/" + order + "/lineas/" + line))).andExpect(status().isForbidden());
         mvc.perform(as("ENCARGADO", post("/api/pedidos")).content("{}")).andExpect(status().isBadRequest());
-        mvc.perform(as("OPERARIO", post("/api/pedidos/" + order + "/cerrar"))
+        mvc.perform(as("OPERARIO", post("/api/pedidos/" + order + "/preparar"))
                         .content("{\"lines\":[" + consumption(line, 1) + "]}"))
                 .andExpect(status().isNoContent());
+        mvc.perform(as("OPERARIO", post("/api/pedidos/" + order + "/entregar"))).andExpect(status().isNoContent());
+    }
+
+    private int preparedOrder() throws Exception {
+        int order = order();
+        int line = body(addLine(order, lot(5), 2));
+        prepare(order, consumption(line, 2)).andExpect(status().isNoContent());
+        return order;
+    }
+
+    private ResultActions deliver(int order) throws Exception {
+        return mvc.perform(admin(post("/api/pedidos/" + order + "/entregar")));
+    }
+
+    @Test
+    void onlyPreparedOrdersCanBeDelivered() throws Exception {
+        int open = order();
+        body(addLine(open, lot(5), 1));
+        deliver(open).andExpect(status().isConflict());
+        deliver(999999).andExpect(status().isNotFound());
+
+        int order = preparedOrder();
+        deliver(order).andExpect(status().isNoContent());
+        deliver(order).andExpect(status().isConflict());
+
+        String json = mvc.perform(admin(get("/api/pedidos/" + order)))
+                .andExpect(jsonPath("$.order.status").value("ENTREGADO"))
+                .andExpect(jsonPath("$.order.deliveredBy").value("Usuario Test"))
+                .andExpect(jsonPath("$.events[0].eventType").value("ENTREGADO"))
+                .andReturn().getResponse().getContentAsString();
+        long deliveredAt = ((Number) JsonPath.read(json, "$.order.deliveredAt")).longValue();
+        long autoCloseAt = ((Number) JsonPath.read(json, "$.order.autoCloseAt")).longValue();
+        assertEquals(48 * 3600L, autoCloseAt - deliveredAt);
+
+        // Un pedido entregado ya no se puede cancelar ni modificar
+        mvc.perform(admin(post("/api/pedidos/" + order + "/cancelar"))).andExpect(status().isConflict());
+        addLine(order, lot(5), 1).andExpect(status().isConflict());
+    }
+
+    @Test
+    void deliveredOrdersCloseAutomaticallyAfterTheDeadline() throws Exception {
+        int order = preparedOrder();
+        deliver(order).andExpect(status().isNoContent());
+        int stillPrepared = preparedOrder();
+
+        // Recién entregado: con el plazo de 48 h aún no se cierra
+        orderService.closeDelivered();
+        mvc.perform(admin(get("/api/pedidos/" + order))).andExpect(jsonPath("$.order.status").value("ENTREGADO"));
+
+        // Con plazo 0 ya ha vencido; el que solo está preparado no se toca
+        assertTrue(orderService.closeDelivered(0) >= 1);
+        mvc.perform(admin(get("/api/pedidos/" + order)))
+                .andExpect(jsonPath("$.order.status").value("CERRADO"))
+                .andExpect(jsonPath("$.order.closedBy").value("Sistema"))
+                .andExpect(jsonPath("$.order.autoCloseAt").value(nullValue()))
+                .andExpect(jsonPath("$.events[0].eventType").value("CERRADO"))
+                .andExpect(jsonPath("$.events[1].eventType").value("ENTREGADO"));
+        mvc.perform(admin(get("/api/pedidos/" + stillPrepared))).andExpect(jsonPath("$.order.status").value("PREPARADO"));
+
+        // Los cerrados salen en su apartado y no en la lista de pedidos en curso
+        mvc.perform(admin(get("/api/pedidos?estado=CERRADO")))
+                .andExpect(jsonPath("$[?(@.orderId == " + order + ")]").exists());
+        mvc.perform(admin(get("/api/pedidos?estado=ABIERTO,PREPARADO,ENTREGADO")))
+                .andExpect(jsonPath("$[?(@.orderId == " + order + ")]").doesNotExist())
+                .andExpect(jsonPath("$[?(@.orderId == " + stillPrepared + ")]").exists());
     }
 }
