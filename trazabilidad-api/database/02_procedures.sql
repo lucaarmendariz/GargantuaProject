@@ -315,18 +315,21 @@ BEGIN
     VALUES (_orderId, 'CREADO', _operator, _notes);
 END;;
 
--- Todos los filtros son opcionales. El rango de fechas incluye _from y excluye _to.
+-- Todos los filtros son opcionales. _status admite varios estados separados por comas
+-- (ABIERTO,PREPARADO). El rango de fechas incluye _from y excluye _to.
 CREATE OR REPLACE PROCEDURE `Order_GetAll`(
-    IN _status VARCHAR(20),
+    IN _status VARCHAR(100),
     IN _from BIGINT,
     IN _to BIGINT
 )
 BEGIN
     SELECT co.order_id, co.order_number, co.customer_name, co.scheduled_date, co.status, co.notes,
            co.created_by, co.closed_by, UNIX_TIMESTAMP(co.created_at) AS created_at, UNIX_TIMESTAMP(co.closed_at) AS closed_at,
+           co.prepared_by, UNIX_TIMESTAMP(co.prepared_at) AS prepared_at,
+           co.delivered_by, UNIX_TIMESTAMP(co.delivered_at) AS delivered_at,
            (SELECT COUNT(*) FROM order_line ol WHERE ol.order_id = co.order_id) AS line_count
     FROM customer_order co
-    WHERE (_status IS NULL OR co.status = _status)
+    WHERE (_status IS NULL OR FIND_IN_SET(co.status, _status) > 0)
       AND (_from IS NULL OR co.scheduled_date >= _from)
       AND (_to IS NULL OR co.scheduled_date < _to)
     ORDER BY co.scheduled_date DESC, co.order_id DESC;
@@ -336,6 +339,8 @@ CREATE OR REPLACE PROCEDURE `Order_FindById`(IN _orderId INT)
 BEGIN
     SELECT co.order_id, co.order_number, co.customer_name, co.scheduled_date, co.status, co.notes,
            co.created_by, co.closed_by, UNIX_TIMESTAMP(co.created_at) AS created_at, UNIX_TIMESTAMP(co.closed_at) AS closed_at,
+           co.prepared_by, UNIX_TIMESTAMP(co.prepared_at) AS prepared_at,
+           co.delivered_by, UNIX_TIMESTAMP(co.delivered_at) AS delivered_at,
            (SELECT COUNT(*) FROM order_line ol WHERE ol.order_id = co.order_id) AS line_count
     FROM customer_order co
     WHERE co.order_id = _orderId;
@@ -486,7 +491,14 @@ BEGIN
     VALUES (v_lot, 'CONSUMIDO', _operator, _consumed, v_note, _orderId);
 END;;
 
-CREATE OR REPLACE PROCEDURE `Order_Close`(
+-- Ciclo de un pedido: ABIERTO -> PREPARADO -> ENTREGADO -> CERRADO (automatico).
+-- Desde ABIERTO tambien se puede CANCELAR.
+
+-- Antes el consumo cerraba el pedido; ahora lo deja PREPARADO
+DROP PROCEDURE IF EXISTS `Order_Close`;;
+
+-- Preparar: con el consumo real de todas las lineas ya registrado
+CREATE OR REPLACE PROCEDURE `Order_Prepare`(
     IN _orderId INT,
     IN _operator VARCHAR(100)
 )
@@ -500,9 +512,51 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Falta indicar el consumo real de alguna linea.', MYSQL_ERRNO = 119;
     END IF;
 
-    UPDATE customer_order SET status = 'CERRADO', closed_by = _operator, closed_at = NOW() WHERE order_id = _orderId;
+    UPDATE customer_order SET status = 'PREPARADO', prepared_by = _operator, prepared_at = NOW() WHERE order_id = _orderId;
 
-    INSERT INTO order_event (order_id, event_type, operator) VALUES (_orderId, 'CERRADO', _operator);
+    INSERT INTO order_event (order_id, event_type, operator) VALUES (_orderId, 'PREPARADO', _operator);
+END;;
+
+-- Entregar: solo un pedido preparado
+CREATE OR REPLACE PROCEDURE `Order_Deliver`(
+    IN _orderId INT,
+    IN _operator VARCHAR(100)
+)
+BEGIN
+    DECLARE v_status VARCHAR(20) DEFAULT NULL;
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_status = NULL;
+
+    SELECT status INTO v_status FROM customer_order WHERE order_id = _orderId FOR UPDATE;
+
+    IF v_status IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'El pedido no existe.', MYSQL_ERRNO = 113;
+    END IF;
+    IF v_status <> 'PREPARADO' THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Solo se puede entregar un pedido preparado.', MYSQL_ERRNO = 123;
+    END IF;
+
+    UPDATE customer_order SET status = 'ENTREGADO', delivered_by = _operator, delivered_at = NOW() WHERE order_id = _orderId;
+
+    INSERT INTO order_event (order_id, event_type, operator) VALUES (_orderId, 'ENTREGADO', _operator);
+END;;
+
+-- Cierre automatico: archiva los pedidos entregados hace al menos _hours horas
+CREATE OR REPLACE PROCEDURE `Order_CloseDelivered`(
+    IN _hours INT,
+    OUT _closed INT
+)
+BEGIN
+    DECLARE v_now TIMESTAMP DEFAULT NOW();
+
+    UPDATE customer_order
+    SET status = 'CERRADO', closed_by = 'Sistema', closed_at = v_now
+    WHERE status = 'ENTREGADO' AND delivered_at <= v_now - INTERVAL _hours HOUR;
+    SET _closed = ROW_COUNT();
+
+    INSERT INTO order_event (order_id, event_type, operator, notes)
+    SELECT order_id, 'CERRADO', 'Sistema', CONCAT('Cierre automatico ', _hours, ' h despues de la entrega')
+    FROM customer_order
+    WHERE status = 'CERRADO' AND closed_by = 'Sistema' AND closed_at = v_now;
 END;;
 
 CREATE OR REPLACE PROCEDURE `Order_Cancel`(

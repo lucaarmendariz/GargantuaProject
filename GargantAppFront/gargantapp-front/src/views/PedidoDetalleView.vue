@@ -29,6 +29,9 @@ const consumption = ref({});
 
 const order = computed(() => detail.value?.order);
 const isOpen = computed(() => order.value?.status === 'ABIERTO');
+const isPrepared = computed(() => order.value?.status === 'PREPARADO');
+const isDelivered = computed(() => order.value?.status === 'ENTREGADO');
+const isClosed = computed(() => order.value?.status === 'CERRADO');
 const timelineItems = computed(() => (detail.value?.events || []).map(eventToTimeline));
 
 const productName = (productId) => products.value.find((product) => product.productId === productId)?.name || '';
@@ -86,14 +89,28 @@ const removeLine = (line) => {
   run(() => apiClient.delete(`/pedidos/${props.id}/lineas/${line.lineId}`), 'Lote retirado del pedido.', 'No se pudo retirar el lote.');
 };
 
-const closeOrder = () => {
-  if (!confirm('¿Cerrar el pedido? Se restará del stock lo consumido y no se podrá modificar.')) return;
-  run(() => apiClient.post(`/pedidos/${props.id}/cerrar`, {
+const prepareOrder = () => {
+  if (!confirm('¿Marcar el pedido como preparado? Se restará del stock lo consumido y ya no se podrán cambiar los lotes.')) return;
+  run(() => apiClient.post(`/pedidos/${props.id}/preparar`, {
     lines: detail.value.lines.map((line) => ({
       lineId: line.lineId,
       consumedQuantity: Number(consumption.value[line.lineId])
     }))
-  }), 'Pedido cerrado y stock actualizado.', 'No se pudo cerrar el pedido.');
+  }), 'Pedido preparado y stock actualizado.', 'No se pudo marcar el pedido como preparado.');
+};
+
+const deliverOrder = () => {
+  if (!confirm('¿Marcar el pedido como entregado al cliente? Se cerrará automáticamente pasados dos días.')) return;
+  run(() => apiClient.post(`/pedidos/${props.id}/entregar`), 'Pedido entregado.', 'No se pudo marcar el pedido como entregado.');
+};
+
+// Vuelve a la lista de la que se vino (pedidos o pedidos cerrados)
+const goBack = () => {
+  if (window.history.state?.back) {
+    router.back();
+  } else {
+    router.push(isClosed.value ? '/pedidos/cerrados' : '/pedidos');
+  }
 };
 
 const cancelOrder = () => {
@@ -108,7 +125,7 @@ onMounted(load);
   <div class="content">
     <header class="card-header">
       <h2>{{ order ? `Pedido ${order.orderNumber}` : 'Pedido' }}</h2>
-      <button @click="router.push('/pedidos')" class="btn-back">Volver</button>
+      <button @click="goBack" class="btn-back">Volver</button>
     </header>
 
     <div class="card-body">
@@ -125,8 +142,12 @@ onMounted(load);
             <div><dt>Fecha programada</dt><dd>{{ formatEpochDate(order.scheduledDate) }}</dd></div>
             <div><dt>Creado por</dt><dd>{{ order.createdBy }}</dd></div>
             <div><dt>Creado el</dt><dd>{{ formatEpochDateTime(order.createdAt) }}</dd></div>
-            <div v-if="order.closedAt"><dt>Finalizado por</dt><dd>{{ order.closedBy }}</dd></div>
-            <div v-if="order.closedAt"><dt>Finalizado el</dt><dd>{{ formatEpochDateTime(order.closedAt) }}</dd></div>
+            <div v-if="order.preparedAt"><dt>Preparado por</dt><dd>{{ order.preparedBy }}</dd></div>
+            <div v-if="order.preparedAt"><dt>Preparado el</dt><dd>{{ formatEpochDateTime(order.preparedAt) }}</dd></div>
+            <div v-if="order.deliveredAt"><dt>Entregado por</dt><dd>{{ order.deliveredBy }}</dd></div>
+            <div v-if="order.deliveredAt"><dt>Entregado el</dt><dd>{{ formatEpochDateTime(order.deliveredAt) }}</dd></div>
+            <div v-if="order.closedAt"><dt>{{ order.status === 'CANCELADO' ? 'Cancelado por' : 'Cerrado por' }}</dt><dd>{{ order.closedBy === 'Sistema' ? 'Cierre automático' : order.closedBy }}</dd></div>
+            <div v-if="order.closedAt"><dt>{{ order.status === 'CANCELADO' ? 'Cancelado el' : 'Cerrado el' }}</dt><dd>{{ formatEpochDateTime(order.closedAt) }}</dd></div>
             <div v-if="order.notes" class="fact-wide"><dt>Observaciones</dt><dd>{{ order.notes }}</dd></div>
           </dl>
         </section>
@@ -172,9 +193,16 @@ onMounted(load);
           </div>
 
           <div v-if="isOpen" class="order-actions">
-            <button @click="closeOrder" :disabled="busy || detail.lines.length === 0">Cerrar pedido y restar stock</button>
+            <button @click="prepareOrder" :disabled="busy || detail.lines.length === 0">Marcar como preparado y restar stock</button>
             <button v-if="canManage" @click="cancelOrder" :disabled="busy" class="btn-danger">Cancelar pedido</button>
           </div>
+          <div v-else-if="isPrepared" class="order-actions">
+            <button @click="deliverOrder" :disabled="busy">Marcar como entregado</button>
+          </div>
+          <p v-else-if="isDelivered && order.autoCloseAt" class="item-meta order-actions">
+            Entregado al cliente. Se cerrará automáticamente el {{ formatEpochDateTime(order.autoCloseAt) }}
+            y pasará a <RouterLink to="/pedidos/cerrados">Pedidos cerrados</RouterLink>.
+          </p>
         </section>
 
         <section class="panel">

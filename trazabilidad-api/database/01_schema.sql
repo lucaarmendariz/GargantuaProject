@@ -49,13 +49,18 @@ CREATE TABLE customer_order (
          order_number VARCHAR(100) UNIQUE NOT NULL,
          customer_name VARCHAR(150) DEFAULT NULL,
          scheduled_date BIGINT NOT NULL, -- Dia programado (epoch en segundos)
-         status VARCHAR(20) NOT NULL DEFAULT 'ABIERTO', -- ABIERTO, CERRADO, CANCELADO
+         status VARCHAR(20) NOT NULL DEFAULT 'ABIERTO', -- ABIERTO, PREPARADO, ENTREGADO, CERRADO, CANCELADO
          notes TEXT DEFAULT NULL,
          created_by VARCHAR(100) NOT NULL,
-         closed_by VARCHAR(100) DEFAULT NULL,
+         closed_by VARCHAR(100) DEFAULT NULL, -- Quien cancela, o 'Sistema' en el cierre automatico
+         prepared_by VARCHAR(100) DEFAULT NULL,
+         delivered_by VARCHAR(100) DEFAULT NULL,
          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
          closed_at TIMESTAMP NULL DEFAULT NULL,
-         INDEX idx_order_schedule (scheduled_date, status)
+         prepared_at TIMESTAMP NULL DEFAULT NULL,
+         delivered_at TIMESTAMP NULL DEFAULT NULL,
+         INDEX idx_order_schedule (scheduled_date, status),
+         INDEX idx_order_delivered (status, delivered_at)
 ) ENGINE=InnoDB;
 
 -- Tabla de Historial (Log de movimientos y captura OCR)

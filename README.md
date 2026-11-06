@@ -64,6 +64,17 @@ bash update_db.sh
 
 Usuario de prueba: `luca` / `moncorp2026`. Es público, así que no lo uses fuera de desarrollo.
 
+**Datos de demo (opcional).** `04_demo_data.sql` rellena todas las pantallas: un usuario de cada rol (`ane` ENCARGADO y `mikel` OPERARIO, misma contraseña), productos de la planta de tortillas, lotes vigentes, a punto de caducar, caducados y bloqueados, historial de planta y pedidos abiertos, cerrados y cancelados con fechas relativas a hoy. Se puede repetir sin duplicar nada. Desde `trazabilidad-api/database`:
+
+```bash
+set -a; source ./.env; set +a
+docker exec -i -e MYSQL_PWD="$DB_PASSWORD" trazabilidad_db mariadb -utrazabilidad_app traceability_lean < 04_demo_data.sql
+```
+
+### Todo con Docker (sin instalar JDK ni Node)
+
+Con la base de datos ya en marcha, desde la raíz del repositorio `docker compose up -d` arranca la API (`http://localhost:8080`) y el frontend (`http://localhost:5173`).
+
 ### 3. Backend
 
 1. Abre la carpeta `trazabilidad-api` en **IntelliJ IDEA** (no la raíz del repositorio).
@@ -104,24 +115,29 @@ La API exige un token JWT, que se obtiene en `POST /api/auth/login` y caduca a l
 
 ## Pedidos y stock
 
-Un pedido tiene una fecha programada y una línea por cada lote que usa:
+Un pedido tiene una fecha programada y una línea por cada lote que usa. Pasa por estos estados:
 
-1. **Reservar:** al asignar un lote baja su cantidad *disponible*, pero no su stock.
-2. **Cerrar:** se indica lo realmente consumido en cada línea. Eso se resta del stock y se libera lo reservado. O se registran todas las líneas o no cambia nada.
-3. **Cancelar o retirar un lote:** se libera lo reservado sin tocar el stock.
+`ABIERTO` → `PREPARADO` → `ENTREGADO` → `CERRADO` (automático). Desde `ABIERTO` también se puede `CANCELAR`.
+
+1. **Reservar** (abierto): al asignar un lote baja su cantidad *disponible*, pero no su stock.
+2. **Preparar:** se indica lo realmente consumido en cada línea. Eso se resta del stock y se libera lo reservado. O se registran todas las líneas o no cambia nada. Desde aquí los lotes del pedido ya no se pueden cambiar.
+3. **Entregar:** se marca cuando el pedido sale hacia el cliente.
+4. **Cerrar (automático):** a las 48 h de la entrega la API pasa el pedido a `CERRADO` (`app.orders.auto-close-hours`). Los cerrados se consultan en su propio apartado, *Pedidos cerrados*, con buscador.
+5. **Cancelar o retirar un lote** (solo abierto): se libera lo reservado sin tocar el stock.
 
 `stock = entrada - consumido` y `disponible = stock - reservado`. Un lote cuyo último movimiento manual es `BLOQUEADO` no se puede reservar ni consumir. Los lotes caducados se señalan, pero no se bloquean.
 
 | Rol | Pedidos |
 |-----|---------|
-| `ADMIN`, `ENCARGADO` | Crear, asignar y retirar lotes, cerrar y cancelar |
-| `OPERARIO` | Consultar y cerrar |
+| `ADMIN`, `ENCARGADO` | Crear, asignar y retirar lotes, preparar, entregar y cancelar |
+| `OPERARIO` | Consultar, preparar y entregar |
 
 **Actualizar una base de datos existente sin perder datos**, desde `trazabilidad-api/database`:
 
 ```bash
 set -a; source ./.env; set +a
 docker exec -i -e MYSQL_PWD="$DB_PASSWORD" trazabilidad_db mariadb -utrazabilidad_app traceability_lean < migrations/001_pedidos.sql
+docker exec -i -e MYSQL_PWD="$DB_PASSWORD" trazabilidad_db mariadb -utrazabilidad_app traceability_lean < migrations/002_estados_pedido.sql
 docker exec -i -e MYSQL_PWD="$DB_PASSWORD" trazabilidad_db mariadb -utrazabilidad_app traceability_lean < 02_procedures.sql
 ```
 

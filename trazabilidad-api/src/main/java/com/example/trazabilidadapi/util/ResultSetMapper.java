@@ -118,6 +118,10 @@ public class ResultSetMapper {
                 .closedBy(rs.getString("closed_by"))
                 .createdAt(rs.getObject("created_at", Long.class))
                 .closedAt(rs.getObject("closed_at", Long.class))
+                .preparedBy(rs.getString("prepared_by"))
+                .preparedAt(rs.getObject("prepared_at", Long.class))
+                .deliveredBy(rs.getString("delivered_by"))
+                .deliveredAt(rs.getObject("delivered_at", Long.class))
                 .lineCount(rs.getInt("line_count"))
                 .build();
     }

@@ -1,18 +1,19 @@
 package com.example.trazabilidadapi.services;
 
 import com.example.trazabilidadapi.exceptions.OrderException;
-import com.example.trazabilidadapi.models.CloseOrderRequest;
 import com.example.trazabilidadapi.models.CreateOrderRequest;
 import com.example.trazabilidadapi.models.CustomerOrder;
 import com.example.trazabilidadapi.models.InUseLine;
 import com.example.trazabilidadapi.models.LineConsumption;
 import com.example.trazabilidadapi.models.LotTraceability;
 import com.example.trazabilidadapi.models.OrderDetail;
+import com.example.trazabilidadapi.models.PrepareOrderRequest;
 import com.example.trazabilidadapi.models.ProductLot;
 import com.example.trazabilidadapi.repositories.LotHistoryRepository;
 import com.example.trazabilidadapi.repositories.OrderRepository;
 import com.example.trazabilidadapi.repositories.ProductLotRepository;
 import com.example.trazabilidadapi.repositories.ProductRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,8 +28,11 @@ public class OrderService {
     private final ProductLotRepository lots;
     private final ProductRepository products;
     private final LotHistoryRepository history;
+    private final int autoCloseHours;
 
-    public OrderService(OrderRepository orders, ProductLotRepository lots, ProductRepository products, LotHistoryRepository history) {
+    public OrderService(OrderRepository orders, ProductLotRepository lots, ProductRepository products, LotHistoryRepository history,
+                        @Value("${app.orders.auto-close-hours:48}") int autoCloseHours) {
+        this.autoCloseHours = autoCloseHours;
         this.orders = orders;
         this.lots = lots;
         this.products = products;
@@ -47,7 +51,9 @@ public class OrderService {
     }
 
     public List<CustomerOrder> list(String status, Long from, Long to) {
-        return orders.findAll(status, from, to);
+        List<CustomerOrder> list = orders.findAll(status, from, to);
+        list.forEach(this::setAutoCloseAt);
+        return list;
     }
 
     public List<InUseLine> inUse(Long from, Long to) {
@@ -59,6 +65,7 @@ public class OrderService {
         if (order == null) {
             throw new OrderException(HttpStatus.NOT_FOUND, "El pedido no existe.");
         }
+        setAutoCloseAt(order);
         return OrderDetail.builder()
                 .order(order)
                 .lines(orders.findLines(orderId))
@@ -79,9 +86,9 @@ public class OrderService {
         orders.removeLine(orderId, lineId, operator);
     }
 
-    /** O se registran todas las lineas y se cierra el pedido, o no cambia nada. */
+    /** Registra el consumo real y deja el pedido PREPARADO. O se registran todas las lineas, o no cambia nada. */
     @Transactional
-    public void close(int orderId, CloseOrderRequest request, String operator) {
+    public void prepare(int orderId, PrepareOrderRequest request, String operator) {
         if (request == null || request.getLines() == null) {
             throw badRequest("Hay que indicar el consumo real de cada línea.");
         }
@@ -91,12 +98,34 @@ public class OrderService {
             }
             orders.consumeLine(orderId, line.getLineId(), line.getConsumedQuantity(), operator);
         }
-        orders.close(orderId, operator);
+        orders.prepare(orderId, operator);
+    }
+
+    @Transactional
+    public void deliver(int orderId, String operator) {
+        orders.deliver(orderId, operator);
     }
 
     @Transactional
     public void cancel(int orderId, String operator) {
         orders.cancel(orderId, operator);
+    }
+
+    /** Cierra los pedidos entregados hace más del plazo configurado. */
+    @Transactional
+    public int closeDelivered() {
+        return closeDelivered(autoCloseHours);
+    }
+
+    @Transactional
+    public int closeDelivered(int hours) {
+        return orders.closeDelivered(hours);
+    }
+
+    private void setAutoCloseAt(CustomerOrder order) {
+        if ("ENTREGADO".equals(order.getStatus()) && order.getDeliveredAt() != null) {
+            order.setAutoCloseAt(order.getDeliveredAt() + autoCloseHours * 3600L);
+        }
     }
 
     public LotTraceability lotTraceability(int lotId) {

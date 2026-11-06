@@ -180,8 +180,24 @@ public class OrderRepository {
         });
     }
 
-    public void close(int orderId, String operator) {
-        changeStatus("{call Order_Close(?, ?)}", orderId, operator);
+    public void prepare(int orderId, String operator) {
+        changeStatus("{call Order_Prepare(?, ?)}", orderId, operator);
+    }
+
+    public void deliver(int orderId, String operator) {
+        changeStatus("{call Order_Deliver(?, ?)}", orderId, operator);
+    }
+
+    /** Pasa a CERRADO los pedidos entregados hace al menos esas horas. Devuelve cuántos. */
+    public int closeDelivered(int hours) {
+        return run(conn -> {
+            try (CallableStatement stmt = conn.prepareCall("{call Order_CloseDelivered(?, ?)}")) {
+                stmt.setInt(1, hours);
+                stmt.registerOutParameter(2, Types.INTEGER);
+                stmt.execute();
+                return stmt.getInt(2);
+            }
+        });
     }
 
     public void cancel(int orderId, String operator) {
@@ -227,6 +243,7 @@ public class OrderRepository {
             case 118 -> new OrderException(HttpStatus.CONFLICT, "Esta línea ya tiene su consumo registrado.");
             case 119 -> new OrderException(HttpStatus.CONFLICT, "Falta indicar el consumo real de alguna línea.");
             case 120 -> new OrderException(HttpStatus.CONFLICT, "El pedido no tiene lotes asignados.");
+            case 123 -> new OrderException(HttpStatus.CONFLICT, "Solo se puede entregar un pedido preparado.");
             case LOCK_WAIT_TIMEOUT, DEADLOCK -> new OrderException(HttpStatus.CONFLICT, "Otro usuario está modificando estos datos. Inténtalo de nuevo.");
             default -> null;
         };

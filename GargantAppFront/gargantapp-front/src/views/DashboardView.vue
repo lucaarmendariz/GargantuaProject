@@ -221,6 +221,10 @@ const logout = () => {
             <span class="text">Pedidos</span>
           </button>
 
+          <button @click="navigateTo('/pedidos/cerrados')" class="menu-btn btn-pedidos-cerrados">
+            <span class="text">Pedidos Cerrados</span>
+          </button>
+
           <button @click="navigateTo('/inventario')" class="menu-btn btn-inventario">
             <span class="text">Inventario Stock</span>
           </button>

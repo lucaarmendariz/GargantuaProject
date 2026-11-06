@@ -46,9 +46,9 @@ public class SecurityConfig {
                         // Consulta del estado de un lote: cualquier usuario con sesion
                         .requestMatchers(HttpMethod.GET, "/api/trazabilidad/**", "/api/lotes/estado/**", "/api/lotes/*/trazabilidad").authenticated()
                         // Mismos permisos que las pantallas del frontend
-                        // Pedidos: el operario los consulta y registra el consumo real al cerrarlos
+                        // Pedidos: el operario los consulta, los prepara (consumo real) y los entrega
                         .requestMatchers(HttpMethod.GET, "/api/pedidos/**").hasAnyRole("ADMIN", "ENCARGADO", "OPERARIO")
-                        .requestMatchers(HttpMethod.POST, "/api/pedidos/*/cerrar").hasAnyRole("ADMIN", "ENCARGADO", "OPERARIO")
+                        .requestMatchers(HttpMethod.POST, "/api/pedidos/*/preparar", "/api/pedidos/*/entregar").hasAnyRole("ADMIN", "ENCARGADO", "OPERARIO")
                         .requestMatchers("/api/pedidos/**").hasAnyRole("ADMIN", "ENCARGADO")
                         .requestMatchers(HttpMethod.POST, "/api/historial/escanear").hasAnyRole("ADMIN", "OPERARIO")
                         .requestMatchers("/api/historial/**").hasRole("ADMIN")

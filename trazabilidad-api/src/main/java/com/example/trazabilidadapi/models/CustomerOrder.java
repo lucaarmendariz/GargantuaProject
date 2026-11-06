@@ -17,5 +17,11 @@ public class CustomerOrder {
     private String closedBy;
     private Long createdAt;
     private Long closedAt;
+    private String preparedBy;
+    private Long preparedAt;
+    private String deliveredBy;
+    private Long deliveredAt;
+    /** Solo en pedidos ENTREGADO: cuándo pasará a CERRADO (epoch en segundos). */
+    private Long autoCloseAt;
     private int lineCount;
 }
