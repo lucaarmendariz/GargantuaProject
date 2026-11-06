@@ -1,5 +1,6 @@
 import { ref, computed } from 'vue';
 import apiClient from '../api';
+import { errorMessage } from '../utils/errors';
 
 export function useInventory() {
   const products = ref([]);
@@ -46,14 +47,16 @@ export function useInventory() {
   };
 
  // Modificar o Reactivar un producto
+// Devuelve true si se guardó
 const updateProduct = async (productData) => {
   try {
     await apiClient.put(`/productos/${productData.productId}`, productData);
     await loadProducts();
+    return true;
   } catch (error) {
-    // ESTO NOS VA A CHIVAR EL ERROR REAL EN LA CONSOLA F12:
-    console.error("Fallo crítico en el PUT:", error);
-    alert(`Error al actualizar la ficha: ${error.status ? `HTTP ${error.status}` : error.message}`);
+    console.error("Fallo al actualizar el producto:", error);
+    alert(`Error al actualizar la ficha: ${await errorMessage(error, 'No se pudo guardar el producto.')}`);
+    return false;
   }
 };
 
@@ -64,7 +67,8 @@ const updateProduct = async (productData) => {
     return products.value.filter(prod => 
       prod.sku?.toLowerCase().includes(query) ||
       prod.name?.toLowerCase().includes(query) ||
-      prod.description?.toLowerCase().includes(query)
+      prod.description?.toLowerCase().includes(query) ||
+      prod.gtin?.includes(query.replace(/[\s-]/g, ''))
     );
   });
 

@@ -2,8 +2,36 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import apiClient from '../api';
+import CameraScanner from '../components/CameraScanner.vue';
+import { parseLabel } from '../utils/labelParser';
 
 const router = useRouter();
+
+// Cámara: lee la etiqueta, busca el lote por su número y rellena el ID y el texto OCR
+const scannerOpen = ref(false);
+const scannedLot = ref('');
+const onScan = async ({ text, source }) => {
+  scannerOpen.value = false;
+  successMessage.value = '';
+  errorMessage.value = '';
+  scannedLot.value = '';
+  const label = parseLabel(text, { source });
+  // El campo es de una línea: se separan las líneas de la etiqueta con " | "
+  ocrRawText.value = label.raw.split(/\s*\n\s*/).filter(Boolean).join(' | ');
+  if (!label.lotNumber) {
+    errorMessage.value = 'No se ha encontrado un número de lote en lo leído. Indica el ID del lote a mano.';
+    return;
+  }
+  try {
+    const status = await apiClient.get(`/trazabilidad/lotes/${encodeURIComponent(label.lotNumber)}/status`);
+    lotId.value = status.lotId;
+    scannedLot.value = `${status.lotNumber} · ${status.productName} (estado: ${status.currentState || 'sin movimientos'})`;
+  } catch (error) {
+    errorMessage.value = error?.status === 404
+      ? `El lote ${label.lotNumber} no existe en el sistema.`
+      : 'No se pudo consultar el lote. Inténtalo de nuevo.';
+  }
+};
 const lotId = ref('');
 const actionType = ref('EN_PRODUCCION');
 const quantityAffected = ref('');
@@ -38,7 +66,7 @@ const submitProductionLog = async () => {
     successMessage.value = 'Movimiento de producción enviado y guardado correctamente.';
     
     // Limpiar el formulario menos el operario
-    lotId.value = ''; quantityAffected.value = ''; ocrRawText.value = ''; observations.value = '';
+    lotId.value = ''; quantityAffected.value = ''; ocrRawText.value = ''; observations.value = ''; scannedLot.value = '';
   } catch (error) {
     errorMessage.value = 'Error al registrar el movimiento. Verifica que el ID de lote sea válido.';
   }
@@ -56,6 +84,10 @@ const submitProductionLog = async () => {
       <p class="subtitle">Registrar manualmente un cambio de estado en la cadena de elaboración.</p>
       
       <form @submit.prevent="submitProductionLog" class="prod-form panel">
+        <div class="scan-row">
+          <button type="button" class="btn-secondary" @click="scannerOpen = true">Escanear etiqueta con la cámara</button>
+          <span v-if="scannedLot" class="item-meta" role="status">Lote leído: {{ scannedLot }}</span>
+        </div>
         <div class="form-grid">
           <div class="form-group">
             <label>ID Interno del Lote (*):</label>
@@ -96,10 +128,19 @@ const submitProductionLog = async () => {
       <p v-if="successMessage" class="msg-success">{{ successMessage }}</p>
       <p v-if="errorMessage" class="msg-error">{{ errorMessage }}</p>
     </div>
+
+    <CameraScanner v-if="scannerOpen" title="Escanear etiqueta del lote" @result="onScan" @close="scannerOpen = false" />
   </div>
 </template>
 
 <style scoped>
+.scan-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+}
+
 .subtitle {
   color: var(--gargantua-gray);
 }

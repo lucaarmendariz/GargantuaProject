@@ -7,6 +7,8 @@ import { dayRange, formatDayLong, formatEpochDate, formatEpochDateTime, isExpire
 import { errorMessage } from '../utils/errors';
 import { loadLayout, moveItem, resetLayout, saveLayout } from '../utils/dashboardLayout';
 import ModuleIcon from '../components/ModuleIcon.vue';
+import CameraScanner from '../components/CameraScanner.vue';
+import { parseLabel } from '../utils/labelParser';
 
 // Accesos del panel. El calendario es otro bloque más y también se puede mover.
 const MODULES = {
@@ -224,12 +226,26 @@ const searchLot = async () => {
   try {
     errorMsg.value = '';
     lotData.value = null;
-    lotData.value = await apiClient.get(`/trazabilidad/lotes/${lotInput.value}/status`);
+    lotData.value = await apiClient.get(`/trazabilidad/lotes/${encodeURIComponent(lotInput.value.trim())}/status`);
   } catch (err) {
     errorMsg.value = err?.status === 404
       ? 'El lote escaneado no existe o no tiene historial registrado.'
       : 'No se pudo conectar con el servidor. Inténtalo de nuevo.';
   }
+};
+
+// Cámara real: lee el código o el texto de la etiqueta y busca el lote
+const scannerOpen = ref(false);
+const onScan = ({ text, source }) => {
+  scannerOpen.value = false;
+  const label = parseLabel(text, { source });
+  if (!label.lotNumber) {
+    lotData.value = null;
+    errorMsg.value = `No se ha encontrado un número de lote en lo leído: "${label.raw.slice(0, 80)}"`;
+    return;
+  }
+  lotInput.value = label.lotNumber;
+  searchLot();
 };
 
 const logout = () => {
@@ -363,12 +379,14 @@ const logout = () => {
       </section>
 
       <section class="search-section panel">
-        <h3>Simulador de Cámara OCR de Planta</h3>
+        <h3>Cámara OCR de Planta</h3>
         <div class="input-row">
-          <input v-model="lotInput" placeholder="Introduce o escanea un número de lote..." @keyup.enter="searchLot" />
-          <button @click="searchLot">Escanear Lote</button>
+          <input v-model="lotInput" aria-label="Número de lote" placeholder="Introduce o escanea un número de lote..." @keyup.enter="searchLot" />
+          <button @click="searchLot">Buscar Lote</button>
         </div>
+        <button @click="scannerOpen = true" class="btn-secondary scan-camera-btn">Escanear con la cámara</button>
         <p v-if="errorMsg" class="msg-error">{{ errorMsg }}</p>
+        <CameraScanner v-if="scannerOpen" title="Escanear lote" @result="onScan" @close="scannerOpen = false" />
       </section>
 
       <section v-if="lotData" class="result-card panel">
@@ -730,6 +748,10 @@ const logout = () => {
 .trace-link {
   display: inline-block;
   margin-top: 14px;
+}
+
+.scan-camera-btn {
+  margin-top: 10px;
 }
 
 .search-section h3,

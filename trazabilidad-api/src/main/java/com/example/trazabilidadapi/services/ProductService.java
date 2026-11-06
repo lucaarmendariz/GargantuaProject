@@ -38,14 +38,31 @@ public class ProductService {
     // 4. Registrar un nuevo producto maestro utilizando el parámetro OUT
     @Transactional(rollbackFor = Exception.class)
     public Integer insertProduct(Product product) throws SQLException {
+        product.setGtin(normalizeGtin(product.getGtin()));
         return repository.insertProduct(product);
     }
 
-    // 5. NUEVO - Actualizar datos del producto maestro (SKU, Nombre, Descripción, Estado)
+    // 5. NUEVO - Actualizar datos del producto maestro (SKU, Nombre, Descripción, Estado, código de barras)
     @Transactional(rollbackFor = Exception.class)
     public void updateProduct(Product product) {
-        // Podrías añadir validaciones de negocio previas aquí si lo necesitas
+        product.setGtin(normalizeGtin(product.getGtin()));
         repository.updateProduct(product);
+    }
+
+    /**
+     * Código de barras comercial a 14 dígitos (formato GTIN-14), como llega en el (01) de las
+     * etiquetas GS1. Así un EAN-13 "8412345678905" y su GTIN-14 "08412345678905" son el mismo.
+     * Vacío = sin código.
+     */
+    public static String normalizeGtin(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String digits = value.replaceAll("[\\s-]", "");
+        if (!digits.matches("\\d{8}|\\d{12}|\\d{13}|\\d{14}")) {
+            throw new IllegalArgumentException("El código de barras debe tener 8, 12, 13 o 14 dígitos.");
+        }
+        return "0".repeat(14 - digits.length()) + digits;
     }
 
     // 6. NUEVO - Eliminar producto (Baja lógica mediante el procedimiento Product_Delete)

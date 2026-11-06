@@ -33,6 +33,7 @@ public class ResultSetMapper {
         return Product.builder()
                 .productId(rs.getInt("product_id"))
                 .sku(rs.getString("sku"))
+                .gtin(rs.getString("gtin"))
                 .name(rs.getString("name"))
                 .description(rs.getString("description"))
                 .isActive(rs.getBoolean("is_active"))

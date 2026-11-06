@@ -37,3 +37,6 @@ __screenshots__/
 
 # Vite
 *.timestamp-*-*.mjs
+
+# Certificados HTTPS locales (scripts/generar-certificado.sh): claves privadas, no se suben
+/certs/

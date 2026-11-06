@@ -14,7 +14,7 @@ const {
 
 // --- ESTADO LOCAL PARA CONTROLAR LA EDICIÓN EN FILA ---
 const editingProductId = ref(null);
-const editForm = ref({ productId: null, sku: '', name: '', description: '', active: 1 });
+const editForm = ref({ productId: null, sku: '', gtin: '', name: '', description: '', active: 1 });
 
 onMounted(() => {
   initInventory();
@@ -33,8 +33,16 @@ const cancelEdit = () => {
 
 // Guardar los cambios modificados en caliente
 const saveProductEdit = async () => {
-  await updateProduct(editForm.value);
-  editingProductId.value = null;
+  // Si falla (p. ej. código de barras repetido) la fila sigue en edición para corregirlo
+  if (await updateProduct({ ...editForm.value, gtin: editForm.value.gtin || null })) {
+    editingProductId.value = null;
+  }
+};
+
+// Al dar de alta un lote puede haberse guardado el código de barras del producto
+const onLotCreated = () => {
+  loadProductLots();
+  loadProducts();
 };
 
 // Manejo seguro del botón borrar
@@ -55,7 +63,7 @@ const handleConfirmDelete = (id, name) => {
     <div class="card-body">
       <div class="forms-container">
         <ProductForm @success="loadProducts" />
-        <LotForm :products="products" @success="loadProductLots" />
+        <LotForm :products="products" @success="onLotCreated" />
       </div>
 
       <div class="search-box">
@@ -82,7 +90,14 @@ const handleConfirmDelete = (id, name) => {
           <tbody>
             <tr v-for="prod in filteredProducts" :key="prod.productId" :class="{ 'row-inactive': !prod.active }">
               <td data-label="ID"><code>#{{ prod.productId }}</code></td>
-              <td data-label="Código SKU"><span class="sku-tag">{{ prod.sku }}</span></td>
+              <td data-label="Código SKU">
+                <div class="code-cell">
+                  <span class="sku-tag">{{ prod.sku }}</span>
+                  <input v-if="editingProductId === prod.productId" v-model="editForm.gtin" class="inline-input"
+                    type="text" inputmode="numeric" aria-label="Código de barras (EAN/GTIN)" placeholder="Código de barras" />
+                  <span v-else-if="prod.gtin" class="gtin-tag" title="Código de barras (GTIN)">EAN {{ prod.gtin }}</span>
+                </div>
+              </td>
 
               <template v-if="editingProductId !== prod.productId">
                 <td data-label="Artículo"><strong>{{ prod.name }}</strong></td>
@@ -206,6 +221,20 @@ const handleConfirmDelete = (id, name) => {
   background: var(--gargantua-cream);
   color: var(--gargantua-dark);
   font-weight: 600;
+  white-space: nowrap;
+}
+
+.code-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.gtin-tag {
+  color: var(--gargantua-gray);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.8rem;
   white-space: nowrap;
 }
 
