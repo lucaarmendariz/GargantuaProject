@@ -20,6 +20,7 @@ SET FOREIGN_KEY_CHECKS = 1;
 CREATE TABLE product (
          product_id INT AUTO_INCREMENT PRIMARY KEY,
          sku VARCHAR(50) UNIQUE NOT NULL,
+         gtin VARCHAR(14) UNIQUE DEFAULT NULL, -- Codigo de barras comercial (EAN/GTIN) en 14 digitos
          name VARCHAR(100) NOT NULL,
          description TEXT DEFAULT NULL,
          is_active TINYINT(1) DEFAULT 1 NOT NULL,

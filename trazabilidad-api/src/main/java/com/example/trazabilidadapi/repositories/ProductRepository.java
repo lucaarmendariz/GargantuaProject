@@ -66,17 +66,19 @@ public class ProductRepository {
 
     // 4. Insertar un nuevo producto maestro utilizando el parámetro OUT
     public Integer insertProduct(Product product) throws SQLException {
-        String sql = "{call Product_Create(?, ?, ?, ?)}";
+        String sql = "{call Product_Create(?, ?, ?, ?, ?)}";
         return jdbcTemplate.execute((Connection conn) -> {
             try (CallableStatement stmt = conn.prepareCall(sql)) {
                 stmt.setString(1, product.getSku());
                 stmt.setString(2, product.getName());
                 stmt.setString(3, product.getDescription());
-                stmt.registerOutParameter(4, Types.INTEGER);
+                stmt.setString(4, product.getGtin());
+                stmt.registerOutParameter(5, Types.INTEGER);
 
                 stmt.execute();
-                return stmt.getInt(4);
+                return stmt.getInt(5);
             } catch (SQLException e) {
+                throwIfDuplicateBarcode(e);
                 throw new RuntimeException("Error ejecutando Product_Create en DB", e);
             }
         });
@@ -84,7 +86,7 @@ public class ProductRepository {
 
     // 5. NUEVO - Actualizar los datos de un producto existente
     public void updateProduct(Product product) {
-        String sql = "{call Product_Update(?, ?, ?, ?, ?)}";
+        String sql = "{call Product_Update(?, ?, ?, ?, ?, ?)}";
         jdbcTemplate.execute((Connection conn) -> {
             try (CallableStatement stmt = conn.prepareCall(sql)) {
                 stmt.setInt(1, product.getProductId());
@@ -92,11 +94,22 @@ public class ProductRepository {
                 stmt.setString(3, product.getName());
                 stmt.setString(4, product.getDescription());
                 stmt.setInt(5, product.isActive() ? 1 : 0); // Convertimos boolean a TINYINT(1)
+                stmt.setString(6, product.getGtin());
 
                 stmt.execute();
+            } catch (SQLException e) {
+                throwIfDuplicateBarcode(e);
+                throw e;
             }
             return null;
         });
+    }
+
+    // Error 107 del procedimiento (o clave única duplicada): el código de barras ya es de otro producto
+    private void throwIfDuplicateBarcode(SQLException e) {
+        if (e.getErrorCode() == 107 || (e.getErrorCode() == 1062 && String.valueOf(e.getMessage()).contains("gtin"))) {
+            throw new IllegalStateException("Ese código de barras ya está asignado a otro producto.");
+        }
     }
 
     // 6. NUEVO - Baja lógica de un producto (Cambia is_active a 0)

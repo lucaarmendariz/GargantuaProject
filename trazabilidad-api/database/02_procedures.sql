@@ -9,15 +9,19 @@ CREATE OR REPLACE PROCEDURE `Product_Create`(
     IN _sku VARCHAR(50),
     IN _name VARCHAR(100),
     IN _description TEXT,
+    IN _gtin VARCHAR(14), -- Codigo de barras comercial (EAN/GTIN), opcional
     OUT _newProductId INT
 )
 BEGIN
     IF (SELECT COUNT(*) FROM product WHERE sku = _sku) > 0 THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Error: Ya existe un producto con ese SKU.', MYSQL_ERRNO = 102;
     END IF;
+    IF _gtin IS NOT NULL AND (SELECT COUNT(*) FROM product WHERE gtin = _gtin) > 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Error: Ese codigo de barras ya es de otro producto.', MYSQL_ERRNO = 107;
+    END IF;
 
-    INSERT INTO product (sku, name, description, is_active)
-    VALUES (_sku, _name, _description, 1);
+    INSERT INTO product (sku, gtin, name, description, is_active)
+    VALUES (_sku, _gtin, _name, _description, 1);
 
     SET _newProductId = LAST_INSERT_ID();
 END;;
@@ -25,13 +29,13 @@ END;;
 -- 1.2 READ (ALL): Listar todo el catálogo para administración
 CREATE OR REPLACE PROCEDURE `Product_GetAll`()
 BEGIN
-    SELECT product_id, sku, name, description, is_active, UNIX_TIMESTAMP(created_at) AS created_at, UNIX_TIMESTAMP(updated_at) AS updated_at FROM product ORDER BY name ASC;
+    SELECT product_id, sku, gtin, name, description, is_active, UNIX_TIMESTAMP(created_at) AS created_at, UNIX_TIMESTAMP(updated_at) AS updated_at FROM product ORDER BY name ASC;
 END;;
 
 -- 1.3 READ (ACTIVE): Listar solo productos activos (para la app de día a día)
 CREATE OR REPLACE PROCEDURE `Product_FindAll`()
 BEGIN
-    SELECT product_id, sku, name, description, is_active, UNIX_TIMESTAMP(created_at) AS created_at, UNIX_TIMESTAMP(updated_at) AS updated_at FROM product WHERE is_active = 1 ORDER BY name ASC;
+    SELECT product_id, sku, gtin, name, description, is_active, UNIX_TIMESTAMP(created_at) AS created_at, UNIX_TIMESTAMP(updated_at) AS updated_at FROM product WHERE is_active = 1 ORDER BY name ASC;
 END;;
 
 -- 1.4 READ (BY ID): Buscar un producto específico
@@ -39,7 +43,7 @@ CREATE OR REPLACE PROCEDURE `Product_FindById`(
     IN _productId INT
 )
 BEGIN
-    SELECT product_id, sku, name, description, is_active, UNIX_TIMESTAMP(created_at) AS created_at, UNIX_TIMESTAMP(updated_at) AS updated_at FROM product WHERE product_id = _productId;
+    SELECT product_id, sku, gtin, name, description, is_active, UNIX_TIMESTAMP(created_at) AS created_at, UNIX_TIMESTAMP(updated_at) AS updated_at FROM product WHERE product_id = _productId;
 END;;
 
 -- 1.5 UPDATE: Modificar datos del producto
@@ -48,15 +52,19 @@ CREATE OR REPLACE PROCEDURE `Product_Update`(
     IN _sku VARCHAR(50),
     IN _name VARCHAR(100),
     IN _description TEXT,
-    IN _isActive TINYINT(1)
+    IN _isActive TINYINT(1),
+    IN _gtin VARCHAR(14)
 )
 BEGIN
     IF (SELECT COUNT(*) FROM product WHERE product_id = _productId) = 0 THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Error: El producto no existe.', MYSQL_ERRNO = 103;
     END IF;
+    IF _gtin IS NOT NULL AND (SELECT COUNT(*) FROM product WHERE gtin = _gtin AND product_id <> _productId) > 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Error: Ese codigo de barras ya es de otro producto.', MYSQL_ERRNO = 107;
+    END IF;
 
     UPDATE product
-    SET sku = _sku, name = _name, description = _description, is_active = _isActive
+    SET sku = _sku, gtin = _gtin, name = _name, description = _description, is_active = _isActive
     WHERE product_id = _productId;
 END;;
 

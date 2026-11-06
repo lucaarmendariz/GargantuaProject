@@ -1,0 +1,2 @@
+# Los scripts de bash deben tener finales de línea LF para ejecutarse en Git Bash
+*.sh text eol=lf

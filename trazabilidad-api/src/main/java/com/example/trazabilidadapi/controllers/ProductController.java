@@ -47,6 +47,10 @@ public class ProductController {
         try {
             Integer newId = service.insertProduct(product);
             return ResponseEntity.status(HttpStatus.CREATED).body(newId); // Devuelve HTTP 201
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage()); // Código de barras mal escrito
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage()); // Código de barras de otro producto
         } catch (SQLException | RuntimeException e) {
             // Si el procedimiento lanza el error 102 (SKU duplicado), enviamos un HTTP 400 Bad Request
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -71,6 +75,10 @@ public class ProductController {
         try {
             service.updateProduct(product);
             return ResponseEntity.ok().body("Producto maestro actualizado correctamente."); // Devuelve HTTP 200
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Error crítico al procesar la actualización del producto.");

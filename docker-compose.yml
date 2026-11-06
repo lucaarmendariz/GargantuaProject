@@ -4,7 +4,11 @@
 #
 #   docker compose up -d
 #
-# Frontend: http://localhost:5173   API: http://localhost:8080/api
+# Frontend: https://localhost:5173 (certificado local: el navegador avisa la primera vez)
+# API:      http://localhost:8080/api (el front la usa a través de /api)
+#
+# Desde un móvil en la misma WiFi: https://<IP del PC>:5173 (necesario para usar la cámara).
+# Para volver a HTTP sin certificado: HTTPS=false docker compose up -d
 services:
   api:
     image: eclipse-temurin:17-jdk
@@ -30,6 +34,10 @@ services:
     environment:
       # Los cambios hechos desde Windows no generan eventos dentro del contenedor
       CHOKIDAR_USEPOLLING: "true"
+      # Vite reenvía /api a la API por la red interna de Docker
+      API_PROXY_TARGET: http://api:8080
+      # Safari en iPhone solo deja usar la cámara en HTTPS
+      HTTPS: ${HTTPS:-true}
     ports:
       - "5173:5173"
     volumes:

@@ -225,6 +225,26 @@ demo: BEGIN
     UPDATE order_event SET event_timestamp = NOW() - INTERVAL 7 DAY WHERE order_id = o9 AND event_type <> 'ENTREGADO';
     END estados;
 
+    -- =============================================================
+    -- BLOQUE 3: codigos de barras (GTIN) de los productos, para que al escanear la
+    -- etiqueta GS1 de un lote se reconozca el producto. Solo si aun no tienen;
+    -- IGNORE evita el error si ese codigo ya se asigno a mano a otro producto.
+    -- =============================================================
+    UPDATE IGNORE product
+    SET gtin = CASE sku
+        WHEN 'GAR-HUE-001' THEN '08412345678905'
+        WHEN 'GAR-PAT-002' THEN '08412345000016'
+        WHEN 'GAR-CEB-003' THEN '08412345000023'
+        WHEN 'GAR-SAL-004' THEN '08412345000030'
+        WHEN 'GAR-TOR-010' THEN '08412345000108'
+        WHEN 'GAR-TOR-011' THEN '08412345000115'
+        WHEN 'GAR-CAJ-020' THEN '08412345000207'
+        WHEN 'MON-OIL-003' THEN '08480000000014'
+    END
+    WHERE gtin IS NULL
+      AND sku IN ('GAR-HUE-001', 'GAR-PAT-002', 'GAR-CEB-003', 'GAR-SAL-004', 'GAR-TOR-010', 'GAR-TOR-011', 'GAR-CAJ-020', 'MON-OIL-003');
+    SET v_loaded = v_loaded + ROW_COUNT();
+
     -- Los pedidos entregados hace mas de 48 h (PED-DEMO-004 y 009) se cierran como lo haria la API,
     -- con la fecha en que se habrian cerrado: 48 h despues de la entrega
     CALL Order_CloseDelivered(48, v_closed);

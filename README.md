@@ -73,7 +73,28 @@ docker exec -i -e MYSQL_PWD="$DB_PASSWORD" trazabilidad_db mariadb -utrazabilida
 
 ### Todo con Docker (sin instalar JDK ni Node)
 
-Con la base de datos ya en marcha, desde la raíz del repositorio `docker compose up -d` arranca la API (`http://localhost:8080`) y el frontend (`http://localhost:5173`).
+Con la base de datos ya en marcha, desde la raíz del repositorio `docker compose up -d` arranca la API (`http://localhost:8080`) y el frontend (`https://localhost:5173`, con un certificado local: el navegador avisa la primera vez). El frontend llama a la API a través de `/api`, que Vite reenvía al contenedor de la API. Para usar HTTP sin certificado: `HTTPS=false docker compose up -d`.
+
+### Escanear etiquetas con la cámara del móvil
+
+En *Inventario → Registrar Entrada de Lote*, en la *Cámara OCR* del Panel Central y en *Producción Planta* hay un botón **Escanear con la cámara**. Lee códigos de barras y QR (Code128, EAN, QR, DataMatrix y GS1 con lote `(10)`, caducidad `(17)` y cantidad `(37)`) y, si la etiqueta no tiene código, reconoce el texto por OCR (`LOTE: ...`, `CAD: dd/mm/aaaa`, `ALB-...`). Los campos se rellenan solos y se revisan antes de guardar. El producto se reconoce por su código de barras (EAN/GTIN, campo del producto en *Inventario*) o por el SKU escrito en la etiqueta; si el código aún no es de ningún producto, al dar de alta el lote se guarda en el producto elegido y la próxima vez se reconoce solo.
+
+Para usarlo desde un móvil (Safari solo deja usar la cámara en HTTPS, y el iPhone no acepta el certificado provisional de Vite):
+
+1. En el PC, desde `GargantAppFront/gargantapp-front`, crea el certificado con la IP del PC y reinicia el front:
+
+   ```bash
+   bash scripts/generar-certificado.sh
+   docker compose restart front
+   ```
+
+   Crea una autoridad de certificación propia (CA) y un certificado para `localhost` y las IP del PC, en `certs/` (no se sube al repositorio). Si cambia la IP, vuelve a ejecutarlo: la CA se mantiene.
+2. El móvil y el PC tienen que estar en la misma WiFi. En el iPhone, abre en Safari `https://<IP del PC>:5173/gargantua-ca.crt`, acepta el aviso (*Mostrar detalles → visitar este sitio web*) y permite descargar el perfil.
+3. Instálalo en *Ajustes → General → VPN y gestión de dispositivos → Gargantua Desarrollo CA → Instalar*.
+4. Actívalo en *Ajustes → General → Información → Ajustes de confianza de certificados → Gargantua Desarrollo CA*.
+5. Abre `https://<IP del PC>:5173`: ya no sale ningún aviso. La primera vez que escanees, permite el acceso a la cámara.
+
+El OCR descarga el idioma la primera vez que se usa, así que el móvil necesita internet en ese momento.
 
 ### 3. Backend
 
@@ -138,6 +159,7 @@ Un pedido tiene una fecha programada y una línea por cada lote que usa. Pasa po
 set -a; source ./.env; set +a
 docker exec -i -e MYSQL_PWD="$DB_PASSWORD" trazabilidad_db mariadb -utrazabilidad_app traceability_lean < migrations/001_pedidos.sql
 docker exec -i -e MYSQL_PWD="$DB_PASSWORD" trazabilidad_db mariadb -utrazabilidad_app traceability_lean < migrations/002_estados_pedido.sql
+docker exec -i -e MYSQL_PWD="$DB_PASSWORD" trazabilidad_db mariadb -utrazabilidad_app traceability_lean < migrations/003_gtin_producto.sql
 docker exec -i -e MYSQL_PWD="$DB_PASSWORD" trazabilidad_db mariadb -utrazabilidad_app traceability_lean < 02_procedures.sql
 ```
 

@@ -1,6 +1,8 @@
 import { clearSession, getToken } from './utils/session';
 
-const BASE_URL = 'http://localhost:8080/api';
+// Ruta relativa: el servidor de Vite reenvía /api a la API (ver vite.config.ts).
+// Así la app funciona tanto en el PC como desde un móvil de la misma red.
+const BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 // El login no lleva token: uno caducado haría que el backend rechazara la petición.
 function authHeaders(endpoint) {

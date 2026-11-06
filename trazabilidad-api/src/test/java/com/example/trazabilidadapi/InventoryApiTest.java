@@ -91,4 +91,29 @@ class InventoryApiTest extends IntegrationTestBase {
                 .andExpect(jsonPath("$.name").value("Editado"))
                 .andExpect(jsonPath("$.active").value(false));
     }
+
+    @Test
+    void productBarcodeIsNormalizedAndUnique() throws Exception {
+        // Un EAN-13 se guarda como GTIN-14, igual que llega en el (01) de las etiquetas GS1
+        String id = mvc.perform(admin(post("/api/productos"))
+                        .content("{\"sku\":\"TEST-GTIN-1\",\"name\":\"Con código\",\"gtin\":\"8 412345 678912\"}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        mvc.perform(admin(get("/api/productos/" + id))).andExpect(jsonPath("$.gtin").value("08412345678912"));
+
+        // El mismo código en otro producto: conflicto, también si se escribe con 14 dígitos
+        mvc.perform(admin(post("/api/productos")).content("{\"sku\":\"TEST-GTIN-2\",\"name\":\"Otro\",\"gtin\":\"08412345678912\"}"))
+                .andExpect(status().isConflict());
+        int other = createProduct("TEST-GTIN-3");
+        mvc.perform(admin(put("/api/productos/" + other)).content(
+                        "{\"productId\":" + other + ",\"sku\":\"TEST-GTIN-3\",\"name\":\"Otro\",\"active\":true,\"gtin\":\"8412345678912\"}"))
+                .andExpect(status().isConflict());
+
+        // Formato no válido y código vacío (sin código de barras)
+        mvc.perform(admin(post("/api/productos")).content("{\"sku\":\"TEST-GTIN-4\",\"name\":\"Mal\",\"gtin\":\"12AB\"}"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(admin(put("/api/productos/" + id)).content(
+                        "{\"productId\":" + id + ",\"sku\":\"TEST-GTIN-1\",\"name\":\"Con código\",\"active\":true,\"gtin\":\"\"}"))
+                .andExpect(status().isOk());
+        mvc.perform(admin(get("/api/productos/" + id))).andExpect(jsonPath("$.gtin").doesNotExist());
+    }
 }
