@@ -71,6 +71,14 @@ set -a; source ./.env; set +a
 docker exec -i -e MYSQL_PWD="$DB_PASSWORD" trazabilidad_db mariadb -utrazabilidad_app traceability_lean < 04_demo_data.sql
 ```
 
+### Datos de prueba automáticos en desarrollo (perfil `dev`)
+
+Con el perfil `dev` la API **reinicia la base de datos con los datos de prueba cada vez que arranca**: borra todas las tablas y ejecuta `01_schema.sql`, `02_procedures.sql`, `03_seeds.sql` y `04_demo_data.sql`. Además vigila esos cuatro scripts y, **si guardas un cambio en alguno, repite el reinicio** sin parar la API (si el script tiene un error, se ve en el log y la API sigue en marcha). Así siempre se trabaja con los mismos datos y con el esquema al día, sin aplicar migraciones a mano.
+
+- `docker compose up -d` y `./gradlew bootRun` ya usan el perfil `dev`. Desde IntelliJ, añade `SPRING_PROFILES_ACTIVE=dev` en las variables de entorno de la configuración de ejecución y pon como *Working directory* la carpeta `trazabilidad-api`.
+- Para conservar los datos entre arranques: `DEV_RESET_DB=false docker compose up -d`, o `app.dev.reset-db=false` en `application-dev.properties`.
+- Por seguridad solo reinicia bases de datos locales (`localhost`, `127.0.0.1` o `host.docker.internal`). **No uses el perfil `dev` en producción.**
+
 ### Todo con Docker (sin instalar JDK ni Node)
 
 Con la base de datos ya en marcha, desde la raíz del repositorio `docker compose up -d` arranca la API (`http://localhost:8080`) y el frontend (`https://localhost:5173`, con un certificado local: el navegador avisa la primera vez). El frontend llama a la API a través de `/api`, que Vite reenvía al contenedor de la API. Para usar HTTP sin certificado: `HTTPS=false docker compose up -d`.
