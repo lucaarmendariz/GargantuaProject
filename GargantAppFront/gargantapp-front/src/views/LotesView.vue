@@ -8,8 +8,11 @@ import { useTabRoute } from '../composables/useTabRoute';
 import { dateInputToEpoch, epochToDateInput, formatEpochDate, formatEpochDateTime, isExpired } from '../utils/date';
 import { errorMessage } from '../utils/errors';
 import { MEASURE_UNITS } from '../utils/units';
+import { can } from '../utils/session';
 
 const router = useRouter();
+// Editar y eliminar lotes: permiso GESTIONAR en Lotes
+const canManage = can('LOTES', 'GESTIONAR');
 
 // Menú del módulo: una acción por pestaña
 const tabs = [
@@ -211,8 +214,10 @@ watch(activeTab, (tab) => {
                 <span class="item-meta">Alta: {{ formatEpochDateTime(lot.createdAt) }} · Última modificación: {{ formatEpochDateTime(lot.updatedAt) }}</span>
                 <div class="lot-actions">
                   <RouterLink :to="`/lotes/${lot.lotId}/trazabilidad`">Ver trazabilidad</RouterLink>
-                  <button @click="startEdit(lot)" :disabled="busy" class="btn-secondary">Editar</button>
-                  <button @click="deleteLot(lot)" :disabled="busy" class="btn-danger">Eliminar</button>
+                  <template v-if="canManage">
+                    <button @click="startEdit(lot)" :disabled="busy" class="btn-secondary">Editar</button>
+                    <button @click="deleteLot(lot)" :disabled="busy" class="btn-danger">Eliminar</button>
+                  </template>
                 </div>
               </template>
 

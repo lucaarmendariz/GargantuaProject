@@ -7,10 +7,11 @@ import PedidosCerradosList from '../components/PedidosCerradosList.vue';
 import { useTabRoute } from '../composables/useTabRoute';
 import { dateInputToEpoch, formatEpochDate, todayInputValue } from '../utils/date';
 import { errorMessage } from '../utils/errors';
-import { hasRole } from '../utils/session';
+import { can } from '../utils/session';
 
 const router = useRouter();
-const canManage = computed(() => hasRole('ADMIN', 'ENCARGADO'));
+// Crear, asignar lotes y cancelar: permiso GESTIONAR en Pedidos
+const canManage = computed(() => can('PEDIDOS', 'GESTIONAR'));
 
 // Menú del módulo: una acción por pestaña. Crear pedidos solo para ADMIN y ENCARGADO.
 const tabs = computed(() => [

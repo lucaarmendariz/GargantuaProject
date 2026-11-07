@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import apiClient from '../api';
 import { saveSession } from '../utils/session';
+import { refreshAccess } from '../utils/access';
 
 const username = ref('');
 const password = ref('');
@@ -19,9 +20,10 @@ const handleLogin = async () => {
       password: password.value
     });
 
-    // Guardamos la sesión en el navegador
+    // Guardamos la sesión en el navegador y los permisos de este usuario
     saveSession(userData);
-    
+    await refreshAccess({ force: true });
+
     // Saltamos al panel de control
     router.push('/dashboard');
     

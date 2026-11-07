@@ -7,14 +7,20 @@ import LotForm from '../components/LotForm.vue';
 import TabMenu from '../components/TabMenu.vue';
 import { useTabRoute } from '../composables/useTabRoute';
 import { formatEpochDate } from '../utils/date';
+import { can } from '../utils/session';
 
 const router = useRouter();
+
+// Dar de alta, editar y dar de baja: permiso GESTIONAR en Inventario
+const canManage = can('INVENTARIO', 'GESTIONAR');
 
 // Menú del módulo: una acción por pestaña
 const tabs = [
   { id: 'lotes', label: 'Visualizar lotes' },
-  { id: 'activo', label: 'Añadir definición de activo' },
-  { id: 'lote', label: 'Añadir lote' },
+  ...(canManage ? [
+    { id: 'activo', label: 'Añadir definición de activo' },
+    { id: 'lote', label: 'Añadir lote' },
+  ] : []),
 ];
 const activeTab = useTabRoute(tabs);
 const {
@@ -150,7 +156,8 @@ const handleConfirmDelete = (id, name) => {
                 </td>
 
                 <td class="cell-actions" data-label="Acciones">
-                  <div v-if="editingProductId !== prod.productId" class="actions-wrapper">
+                  <span v-if="!canManage" class="no-lots">Solo consulta</span>
+                  <div v-else-if="editingProductId !== prod.productId" class="actions-wrapper">
                     <button @click="startEdit(prod)" class="btn-action btn-edit" title="Editar Metadatos">Editar</button>
                     <button v-if="prod.active" @click="handleConfirmDelete(prod.productId, prod.name)"
                       class="btn-action btn-delete" title="Dar de baja">

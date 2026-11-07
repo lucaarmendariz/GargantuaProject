@@ -262,6 +262,98 @@ BEGIN
     SELECT * FROM app_user WHERE username = _username AND is_active = 1;
 END;;
 
+-- =================================================================
+-- BLOQUE 5: MODULOS CONTRATADOS, PERMISOS Y USUARIOS
+-- =================================================================
+
+-- Lo que puede hacer un usuario activo en cada modulo (vacio si no existe o esta desactivado).
+-- Modulo apagado: NINGUNO para todos. ADMIN y SUPERADMIN: GESTIONAR en los activos.
+CREATE OR REPLACE PROCEDURE `Access_GetForUser`(IN _username VARCHAR(50))
+BEGIN
+    SELECT u.role, m.module_code, m.name,
+           CASE WHEN m.is_enabled = 0 THEN 'NINGUNO'
+                WHEN u.role IN ('ADMIN', 'SUPERADMIN') THEN 'GESTIONAR'
+                ELSE COALESCE(rp.access, 'NINGUNO') END AS access
+    FROM app_user u
+             JOIN app_module m
+             LEFT JOIN role_permission rp ON rp.role = u.role AND rp.module_code = m.module_code
+    WHERE u.username = _username AND u.is_active = 1
+    ORDER BY m.sort_order;
+END;;
+
+CREATE OR REPLACE PROCEDURE `Module_GetAll`()
+BEGIN
+    SELECT module_code, name, is_enabled FROM app_module ORDER BY sort_order;
+END;;
+
+CREATE OR REPLACE PROCEDURE `Module_SetEnabled`(IN _moduleCode VARCHAR(30), IN _enabled TINYINT(1))
+BEGIN
+    IF (SELECT COUNT(*) FROM app_module WHERE module_code = _moduleCode) = 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'El módulo no existe.', MYSQL_ERRNO = 130;
+    END IF;
+    UPDATE app_module SET is_enabled = _enabled WHERE module_code = _moduleCode;
+END;;
+
+CREATE OR REPLACE PROCEDURE `RolePermission_GetAll`()
+BEGIN
+    SELECT rp.role, rp.module_code, rp.access
+    FROM role_permission rp JOIN app_module m ON m.module_code = rp.module_code
+    ORDER BY rp.role, m.sort_order;
+END;;
+
+-- Solo se configuran ENCARGADO y OPERARIO: ADMIN y SUPERADMIN siempre gestionan todo
+CREATE OR REPLACE PROCEDURE `RolePermission_Set`(IN _role VARCHAR(50), IN _moduleCode VARCHAR(30), IN _access VARCHAR(20))
+BEGIN
+    IF _role NOT IN ('ENCARGADO', 'OPERARIO') THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Solo se configuran los permisos de ENCARGADO y OPERARIO.', MYSQL_ERRNO = 131;
+    END IF;
+    IF _access NOT IN ('NINGUNO', 'VER', 'GESTIONAR') THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'El permiso debe ser NINGUNO, VER o GESTIONAR.', MYSQL_ERRNO = 131;
+    END IF;
+    IF (SELECT COUNT(*) FROM app_module WHERE module_code = _moduleCode) = 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'El módulo no existe.', MYSQL_ERRNO = 130;
+    END IF;
+    INSERT INTO role_permission (role, module_code, access) VALUES (_role, _moduleCode, _access)
+    ON DUPLICATE KEY UPDATE access = _access;
+END;;
+
+-- Usuarios del cliente (sin la contraseña). El SUPERADMIN no aparece: no es del cliente.
+CREATE OR REPLACE PROCEDURE `AppUser_GetAll`()
+BEGIN
+    SELECT user_id, username, name, role, is_active, UNIX_TIMESTAMP(created_at) AS created_at
+    FROM app_user WHERE role <> 'SUPERADMIN' ORDER BY is_active DESC, name;
+END;;
+
+CREATE OR REPLACE PROCEDURE `AppUser_Create`(
+    IN _username VARCHAR(50),
+    IN _passwordHash VARCHAR(255),
+    IN _name VARCHAR(100),
+    IN _role VARCHAR(50),
+    OUT _newUserId INT
+)
+BEGIN
+    IF _role NOT IN ('ADMIN', 'ENCARGADO', 'OPERARIO') THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'El rol debe ser ADMIN, ENCARGADO u OPERARIO.', MYSQL_ERRNO = 131;
+    END IF;
+    IF (SELECT COUNT(*) FROM app_user WHERE username = _username) > 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Ya existe un usuario con ese nombre de usuario.', MYSQL_ERRNO = 132;
+    END IF;
+    INSERT INTO app_user (username, password_hash, name, role) VALUES (_username, _passwordHash, _name, _role);
+    SET _newUserId = LAST_INSERT_ID();
+END;;
+
+-- Cambia rol y estado. Los usuarios SUPERADMIN no se tocan desde el panel del cliente.
+CREATE OR REPLACE PROCEDURE `AppUser_Update`(IN _userId INT, IN _role VARCHAR(50), IN _active TINYINT(1))
+BEGIN
+    IF (SELECT COUNT(*) FROM app_user WHERE user_id = _userId AND role <> 'SUPERADMIN') = 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'El usuario no existe.', MYSQL_ERRNO = 133;
+    END IF;
+    IF _role NOT IN ('ADMIN', 'ENCARGADO', 'OPERARIO') THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'El rol debe ser ADMIN, ENCARGADO u OPERARIO.', MYSQL_ERRNO = 131;
+    END IF;
+    UPDATE app_user SET role = _role, is_active = _active WHERE user_id = _userId;
+END;;
+
 DELIMITER ;
 
 DELIMITER ;;
