@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -73,10 +74,11 @@ class InventoryApiTest extends IntegrationTestBase {
     }
 
     @Test
-    void duplicatedSkuReturns400() throws Exception {
+    void duplicatedSkuReturns409WithItsReason() throws Exception {
         createProduct("TEST-DUPLICADO");
         mvc.perform(admin(post("/api/productos")).content("{\"sku\":\"TEST-DUPLICADO\",\"name\":\"Otro\"}"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isConflict())
+                .andExpect(content().string("Ya existe un producto con ese SKU."));
     }
 
     @Test

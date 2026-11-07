@@ -79,6 +79,9 @@ public class ProductRepository {
                 return stmt.getInt(5);
             } catch (SQLException e) {
                 throwIfDuplicateBarcode(e);
+                if (e.getErrorCode() == 102) {
+                    throw new IllegalStateException("Ya existe un producto con ese SKU.");
+                }
                 throw new RuntimeException("Error ejecutando Product_Create en DB", e);
             }
         });

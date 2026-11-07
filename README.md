@@ -1,12 +1,8 @@
 # GargantuaProject
 
-> ⚠️ COMPLETAR: una frase que resuma el proyecto. Ejemplo: *Aplicación web para el seguimiento y la trazabilidad de [productos / lotes / equipos / pedidos] a lo largo de su ciclo de vida.*
+> Aplicación web de trazabilidad para plantas de alimentación: lotes e inventario, pedidos que reservan y consumen stock, movimientos de producción con escáner de etiquetas, y paneles para activar módulos contratados y repartir permisos por rol.
 
 ![Estado](https://img.shields.io/badge/estado-en%20desarrollo-orange)
-
-# Gargantua
-
-[Descripción breve del proyecto: qué hace la aplicación y para quién.]
 
 Este repositorio contiene el backend y el frontend en el mismo lugar, pero **se desarrollan por separado**: cada parte tiene su carpeta, su entorno de desarrollo y su forma de arrancar.
 
@@ -75,8 +71,12 @@ docker exec -i -e MYSQL_PWD="$DB_PASSWORD" trazabilidad_db mariadb -utrazabilida
 
 Con el perfil `dev` la API **reinicia la base de datos con los datos de prueba cada vez que arranca**: borra todas las tablas y ejecuta `01_schema.sql`, `02_procedures.sql`, `03_seeds.sql` y `04_demo_data.sql`. Además vigila esos cuatro scripts y, **si guardas un cambio en alguno, repite el reinicio** sin parar la API (si el script tiene un error, se ve en el log y la API sigue en marcha). Así siempre se trabaja con los mismos datos y con el esquema al día, sin aplicar migraciones a mano.
 
-- `docker compose up -d` y `./gradlew bootRun` ya usan el perfil `dev`. Desde IntelliJ, añade `SPRING_PROFILES_ACTIVE=dev` en las variables de entorno de la configuración de ejecución y pon como *Working directory* la carpeta `trazabilidad-api`.
-- Para conservar los datos entre arranques: `DEV_RESET_DB=false docker compose up -d`, o `app.dev.reset-db=false` en `application-dev.properties`.
+- `./gradlew bootRun` usa el perfil `dev` con el reinicio encendido (`app.dev.reset-db=false` en `application-dev.properties` lo apaga). Desde IntelliJ, añade `SPRING_PROFILES_ACTIVE=dev` en las variables de entorno de la configuración de ejecución y pon como *Working directory* la carpeta `trazabilidad-api`.
+- `docker compose up -d` también usa `dev`, pero **con el reinicio apagado**, para que instalar la app en un cliente con Docker nunca borre sus datos. En tu equipo de desarrollo, enciéndelo con un `.env` en la raíz del repositorio (no se sube a git):
+
+  ```bash
+  echo DEV_RESET_DB=true > .env
+  ```
 - Por seguridad solo reinicia bases de datos locales (`localhost`, `127.0.0.1` o `host.docker.internal`). **No uses el perfil `dev` en producción.**
 
 ### Todo con Docker (sin instalar JDK ni Node)
@@ -207,124 +207,6 @@ docker exec -i -e MYSQL_PWD="$DB_PASSWORD" trazabilidad_db mariadb -utrazabilida
 - **Versión de Java incorrecta:** comprueba con `java -version` que tienes la 17.
 - **`mariadb: command not found` en `update_db.sh`:** instala el cliente de MariaDB o ejecuta los `.sql` dentro del contenedor de Docker.
 
-## Índice
-
-- [Descripción](#descripción)
-- [Funcionalidades](#funcionalidades)
-- [Tecnologías](#tecnologías)
-- [Estructura del repositorio](#estructura-del-repositorio)
-- [Requisitos previos](#requisitos-previos)
-- [Instalación y puesta en marcha](#instalación-y-puesta-en-marcha)
-- [Variables de entorno](#variables-de-entorno)
-- [Documentación de la API](#documentación-de-la-api)
-- [Tests](#tests)
-- [Hoja de ruta](#hoja-de-ruta)
-- [Autoría](#autoría)
-
-## Descripción
-
-⚠️ COMPLETAR: explica en 3-5 líneas **qué problema resuelve**, **quién lo usa** y **qué se traza** (por ejemplo, qué entidades se siguen y qué eventos se registran).
-
-El proyecto se divide en dos partes independientes:
-
-- **`trazabilidad-api`**: API que gestiona los datos y la lógica de negocio.
-- **`GargantAppFront/gargantapp-front`**: aplicación web que consume la API.
-
-## Funcionalidades
-
-⚠️ COMPLETAR: deja solo lo que **ya está implementado** y mueve el resto a la hoja de ruta.
-
-- [ ] Autenticación y gestión de usuarios
-- [x] Roles y permisos (módulos contratados, permisos por rol y gestión de usuarios)
-- [ ] Registro de [entidades principales]
-- [ ] Historial de movimientos / eventos de cada elemento
-- [ ] Búsqueda y filtrado
-- [ ] Informes o exportación de datos
-
-## Tecnologías
-
-| Capa | Tecnología |
-|------|------------|
-| API | ⚠️ COMPLETAR (lenguaje y framework) |
-| Base de datos | ⚠️ COMPLETAR |
-| Frontend | ⚠️ COMPLETAR (framework, versión) |
-| Autenticación | ⚠️ COMPLETAR (token, sesión, API Key…) |
-| Otros | ⚠️ COMPLETAR (Docker, tests, linter…) |
-
-## Estructura del repositorio
-
-```
-GargantuaProject/
-├── GargantAppFront/
-│   └── gargantapp-front/   # Frontend
-└── trazabilidad-api/       # Backend / API
-```
-
-## Requisitos previos
-
-⚠️ COMPLETAR con versiones concretas, por ejemplo:
-
-- Node.js ≥ XX
-- ⚠️ Runtime de la API (PHP / Python / Java / Node…) ≥ XX
-- ⚠️ Base de datos (MySQL / PostgreSQL…) ≥ XX
-- Git
-
-## Instalación y puesta en marcha
-
-### 1. Clonar el repositorio
-
-```bash
-git clone https://github.com/lucarmendariz/GargantuaProject.git
-cd GargantuaProject
-```
-
-### 2. Arrancar la API
-
-```bash
-cd trazabilidad-api
-# ⚠️ COMPLETAR: instalar dependencias
-# ⚠️ COMPLETAR: copiar .env.example a .env y configurarlo
-# ⚠️ COMPLETAR: crear la base de datos y ejecutar migraciones / importar el script SQL
-# ⚠️ COMPLETAR: comando para arrancar el servidor
-```
-
-La API quedará disponible en `http://localhost:⚠️PUERTO`.
-
-### 3. Arrancar el frontend
-
-```bash
-cd GargantAppFront/gargantapp-front
-npm install
-npm run dev
-```
-
-La aplicación quedará disponible en `http://localhost:⚠️PUERTO`.
-
-## Variables de entorno
-
-Nunca subas archivos `.env` con datos reales. Copia la plantilla y rellénala:
-
-| Variable | Descripción | Ejemplo |
-|----------|-------------|---------|
-| ⚠️ `DB_HOST` | Servidor de la base de datos | `localhost` |
-| ⚠️ `DB_NAME` | Nombre de la base de datos | `gargantua` |
-| ⚠️ `DB_USER` | Usuario de la base de datos | `root` |
-| ⚠️ `DB_PASSWORD` | Contraseña | *(no subir al repo)* |
-| ⚠️ `API_URL` (frontend) | URL base de la API | `http://localhost:8000/api` |
-
-## Documentación de la API
-
-⚠️ COMPLETAR con tus endpoints reales. Plantilla:
-
-| Método | Ruta | Descripción | Auth |
-|--------|------|-------------|------|
-| POST | `/api/login` | Iniciar sesión | No |
-| GET | `/api/⚠️recurso` | Listar elementos | Sí |
-| GET | `/api/⚠️recurso/{id}` | Detalle de un elemento | Sí |
-| POST | `/api/⚠️recurso` | Crear elemento | Sí |
-| PUT | `/api/⚠️recurso/{id}` | Modificar elemento | Sí |
-| DELETE | `/api/⚠️recurso/{id}` | Eliminar elemento | Admin |
-
 ## Tests
 
 ```bash
@@ -335,16 +217,3 @@ cd trazabilidad-api && ./gradlew test
 cd GargantAppFront/gargantapp-front && npm test
 ```
 
-## Hoja de ruta
-
-- [ ] Completar README con capturas de pantalla
-- [ ] Añadir Docker para levantar todo con un solo comando
-- [ ] Añadir tests automáticos
-- [ ] Documentar la API (OpenAPI / Swagger)
-- [ ] ⚠️ COMPLETAR: siguientes funcionalidades
-
-## Autoría
-
-Proyecto desarrollado por **⚠️ tu nombre** como ⚠️ proyecto de ciclo / trabajo personal.
-
-⚠️ COMPLETAR: licencia (por ejemplo, MIT) o indicar que es de uso académico.

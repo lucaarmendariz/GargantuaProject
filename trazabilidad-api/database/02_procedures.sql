@@ -143,11 +143,23 @@ CREATE OR REPLACE PROCEDURE `ProductLot_Update`(
     IN _supplierReference VARCHAR(100)
 )
 BEGIN
-    IF (SELECT COUNT(*) FROM product_lot WHERE lot_id = _lotId) = 0 THEN
+    DECLARE v_used DECIMAL(12,4) DEFAULT NULL;
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_used = NULL;
+    -- Si algo falla, no queda nada a medias y se libera el bloqueo
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    -- La fila queda bloqueada hasta el COMMIT: una reserva a la vez no puede dejar el disponible en negativo
+    START TRANSACTION;
+    SELECT consumed_quantity + reserved_quantity INTO v_used FROM product_lot WHERE lot_id = _lotId FOR UPDATE;
+
+    IF v_used IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Error: El lote que intentas actualizar no existe.', MYSQL_ERRNO = 106;
     END IF;
-
-    IF (SELECT consumed_quantity + reserved_quantity FROM product_lot WHERE lot_id = _lotId) > _quantity THEN
+    IF v_used > _quantity THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Error: La cantidad no puede ser menor que lo ya reservado o consumido.', MYSQL_ERRNO = 122;
     END IF;
 
@@ -157,6 +169,7 @@ BEGIN
         expiration_date = _expirationDate,
         supplier_reference = _supplierReference
     WHERE lot_id = _lotId;
+    COMMIT;
 END;;
 
 -- 2.6 DELETE: Eliminar lote (Elimina historial en cascada automáticamente por clave foránea)
