@@ -15,17 +15,16 @@ const timelineItems = computed(() => historyLogs.value.map(historyToTimeline));
 
 const fetchHistory = async () => {
   if (!lotIdInput.value) return;
+  errorMsg.value = '';
   try {
-    errorMsg.value = '';
     historyLogs.value = await apiClient.get(`/historial/lote/${lotIdInput.value}`);
-    searchDone.value = true;
   } catch (error) {
     historyLogs.value = [];
-    searchDone.value = true;
     errorMsg.value = error?.status === 404
       ? 'No existe ningún lote con este ID.'
       : 'No se pudo conectar con el servidor. Inténtalo de nuevo.';
   }
+  searchDone.value = true;
 };
 </script>
 

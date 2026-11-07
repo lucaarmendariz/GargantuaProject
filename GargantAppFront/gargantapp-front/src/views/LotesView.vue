@@ -3,9 +3,11 @@ import { onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import apiClient from '../api';
 import TabMenu from '../components/TabMenu.vue';
+import { useAction } from '../composables/useAction';
 import { useTabRoute } from '../composables/useTabRoute';
 import { dateInputToEpoch, epochToDateInput, formatEpochDate, formatEpochDateTime, isExpired } from '../utils/date';
 import { errorMessage } from '../utils/errors';
+import { MEASURE_UNITS } from '../utils/units';
 
 const router = useRouter();
 
@@ -17,12 +19,6 @@ const tabs = [
 const activeTab = useTabRoute(tabs);
 const searchDone = ref(false);
 
-const UNITS = [
-  { value: 'UNITS', label: 'Unidades (Fichas)' },
-  { value: 'KILOS', label: 'Kilogramos (Materia prima)' },
-  { value: 'BOXES', label: 'Cajas de empaquetado' },
-];
-
 const products = ref([]);
 const lots = ref([]);
 const loading = ref(true);
@@ -30,9 +26,7 @@ const listError = ref('');
 const productFilter = ref('');
 const lotIdInput = ref('');
 
-const actionError = ref('');
-const actionSuccess = ref('');
-const busy = ref(false);
+const { busy, actionError, actionSuccess, run } = useAction(() => refresh());
 
 // --- ESTADO LOCAL PARA CONTROLAR LA EDICIÓN DE UN LOTE ---
 const editingLotId = ref(null);
@@ -104,22 +98,6 @@ const startEdit = (lot) => {
 
 const cancelEdit = () => {
   editingLotId.value = null;
-};
-
-const run = async (action, success, fallback) => {
-  if (busy.value) return;
-  busy.value = true;
-  actionError.value = '';
-  actionSuccess.value = '';
-  try {
-    await action();
-    actionSuccess.value = success;
-    await refresh();
-  } catch (error) {
-    actionError.value = await errorMessage(error, fallback);
-  } finally {
-    busy.value = false;
-  }
 };
 
 const saveEdit = (lot) => run(async () => {
@@ -246,7 +224,7 @@ watch(activeTab, (tab) => {
                 <div class="form-group">
                   <label :for="`lot-unit-${lot.lotId}`">Unidad medida:</label>
                   <select :id="`lot-unit-${lot.lotId}`" v-model="editForm.measureUnit">
-                    <option v-for="unit in UNITS" :key="unit.value" :value="unit.value">{{ unit.label }}</option>
+                    <option v-for="unit in MEASURE_UNITS" :key="unit.value" :value="unit.value">{{ unit.label }}</option>
                   </select>
                 </div>
                 <div class="form-group">
@@ -306,11 +284,6 @@ watch(activeTab, (tab) => {
 
 .form-wide {
   grid-column: 1 / -1;
-}
-
-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
 }
 
 @media (max-width: 480px) {

@@ -1,7 +1,6 @@
 package com.example.trazabilidadapi.repositories;
 
 import com.example.trazabilidadapi.models.ProductLot;
-import com.example.trazabilidadapi.models.CurrentLotStatus; // DTO personalizado para el estado actual
 import com.example.trazabilidadapi.util.ResultSetMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -133,26 +132,5 @@ public class ProductLotRepository {
             }
             throw new RuntimeException("Error al eliminar el lote con ID: " + lotId, e);
         }
-    }
-
-    public CurrentLotStatus getCurrentStatus(String lotNumber) {
-        String sql = "{call ProductLot_GetCurrentStatus(?)}";
-
-        try (Connection conn = Objects.requireNonNull(jdbcTemplate.getDataSource()).getConnection();
-             CallableStatement stmt = conn.prepareCall(sql)) {
-
-            stmt.setString(1, lotNumber);
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    return ResultSetMapper.getCurrentLotStatusFromResultSet(rs);
-                }
-            }
-        } catch (SQLException e) {
-            if (e.getErrorCode() == 101) {
-                throw new IllegalArgumentException("El número de lote no existe en el sistema.");
-            }
-            throw new RuntimeException("Error al consultar el motor de trazabilidad para el lote: " + lotNumber, e);
-        }
-        return null;
     }
 }

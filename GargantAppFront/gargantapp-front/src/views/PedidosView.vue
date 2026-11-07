@@ -7,10 +7,10 @@ import PedidosCerradosList from '../components/PedidosCerradosList.vue';
 import { useTabRoute } from '../composables/useTabRoute';
 import { dateInputToEpoch, formatEpochDate, todayInputValue } from '../utils/date';
 import { errorMessage } from '../utils/errors';
-import { getUser } from '../utils/session';
+import { hasRole } from '../utils/session';
 
 const router = useRouter();
-const canManage = computed(() => ['ADMIN', 'ENCARGADO'].includes(getUser()?.role));
+const canManage = computed(() => hasRole('ADMIN', 'ENCARGADO'));
 
 // Menú del módulo: una acción por pestaña. Crear pedidos solo para ADMIN y ENCARGADO.
 const tabs = computed(() => [

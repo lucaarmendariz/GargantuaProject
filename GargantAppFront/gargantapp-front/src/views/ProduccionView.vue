@@ -1,9 +1,10 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import apiClient from '../api';
 import CameraScanner from '../components/CameraScanner.vue';
 import { parseLabel } from '../utils/labelParser';
+import { getUser } from '../utils/session';
 
 const router = useRouter();
 
@@ -40,14 +41,7 @@ const observations = ref('');
 
 const successMessage = ref('');
 const errorMessage = ref('');
-const operatorName = ref('Operario Anónimo');
-
-onMounted(() => {
-  const savedUser = localStorage.getItem('user');
-  if (savedUser) {
-    operatorName.value = JSON.parse(savedUser).name;
-  }
-});
+const operatorName = getUser()?.name || 'Operario Anónimo';
 
 const submitProductionLog = async () => {
   try {
@@ -55,7 +49,7 @@ const submitProductionLog = async () => {
     errorMessage.value = '';
 
     // POST nativo a /api/historial/escanear
-    const responseMessage = await apiClient.post('/historial/escanear', {
+    await apiClient.post('/historial/escanear', {
       lotId: parseInt(lotId.value),
       actionType: actionType.value,
       quantityAffected: quantityAffected.value ? parseFloat(quantityAffected.value) : null,

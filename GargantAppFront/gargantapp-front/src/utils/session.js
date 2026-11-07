@@ -20,3 +20,7 @@ export function clearSession() {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
 }
+
+export function hasRole(...roles) {
+  return roles.includes(getUser()?.role);
+}

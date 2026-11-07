@@ -1,6 +1,5 @@
 package com.example.trazabilidadapi.controllers;
 
-import com.example.trazabilidadapi.models.CurrentLotStatus;
 import com.example.trazabilidadapi.models.ProductLot;
 import com.example.trazabilidadapi.services.ProductLotService;
 import org.springframework.http.HttpStatus;
@@ -72,19 +71,5 @@ public class ProductLotController {
     public ResponseEntity<Void> deleteLot(@PathVariable int lotId) {
         service.deleteLot(lotId);
         return ResponseEntity.noContent().build();
-    }
-
-    // 3.3 TRACEABILITY ENGINE: Consultar el estado actual y OCR de un lote por su código de barras
-    @GetMapping("/estado/{lotNumber}")
-    public ResponseEntity<CurrentLotStatus> getCurrentStatus(@PathVariable String lotNumber) {
-        try {
-            CurrentLotStatus status = service.getCurrentLotStatus(lotNumber);
-            if (status == null) {
-                return ResponseEntity.notFound().build();
-            }
-            return ResponseEntity.ok(status);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.notFound().build();
-        }
     }
 }

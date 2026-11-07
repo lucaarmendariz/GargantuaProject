@@ -4,10 +4,11 @@ import { useRouter } from 'vue-router';
 import apiClient from '../api';
 import EventTimeline from '../components/EventTimeline.vue';
 import TabMenu from '../components/TabMenu.vue';
+import { useAction } from '../composables/useAction';
 import { useTabRoute } from '../composables/useTabRoute';
 import { formatEpochDate, formatEpochDateTime, isExpired } from '../utils/date';
 import { errorMessage } from '../utils/errors';
-import { getUser } from '../utils/session';
+import { hasRole } from '../utils/session';
 import { eventToTimeline } from '../utils/timeline';
 
 const props = defineProps({
@@ -15,13 +16,11 @@ const props = defineProps({
 });
 
 const router = useRouter();
-const canManage = computed(() => ['ADMIN', 'ENCARGADO'].includes(getUser()?.role));
+const canManage = computed(() => hasRole('ADMIN', 'ENCARGADO'));
 
 const detail = ref(null);
 const loadError = ref('');
-const actionError = ref('');
-const actionSuccess = ref('');
-const busy = ref(false);
+const { busy, actionError, actionSuccess, run } = useAction(() => load());
 
 const lots = ref([]);
 const products = ref([]);
@@ -66,22 +65,6 @@ const load = async () => {
   } catch (error) {
     detail.value = null;
     loadError.value = await errorMessage(error, 'No se pudo cargar el pedido.');
-  }
-};
-
-const run = async (action, success, fallback) => {
-  if (busy.value) return;
-  busy.value = true;
-  actionError.value = '';
-  actionSuccess.value = '';
-  try {
-    await action();
-    actionSuccess.value = success;
-    await load();
-  } catch (error) {
-    actionError.value = await errorMessage(error, fallback);
-  } finally {
-    busy.value = false;
   }
 };
 
@@ -277,11 +260,6 @@ dd {
   margin-top: 16px;
   padding-top: 16px;
   border-top: 1px solid var(--gargantua-border);
-}
-
-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
 }
 
 @media (max-width: 480px) {

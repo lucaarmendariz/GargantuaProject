@@ -122,7 +122,6 @@ const onPhoto = async (event) => {
     const result = await reader.decodeFromImageUrl(url);
     finish(result.getText(), 'barcode');
   } catch {
-    busy.value = false;
     await runOcr(url);
   } finally {
     busy.value = false;
@@ -246,10 +245,5 @@ onBeforeUnmount(() => {
 
 .photo-input {
   display: none;
-}
-
-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
 }
 </style>

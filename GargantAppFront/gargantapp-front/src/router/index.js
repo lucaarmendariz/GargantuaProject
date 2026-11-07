@@ -8,7 +8,7 @@ import PedidosView from '../views/PedidosView.vue'
 import PedidoDetalleView from '../views/PedidoDetalleView.vue'
 import TrazabilidadLoteView from '../views/TrazabilidadLoteView.vue'
 import LotesView from '../views/LotesView.vue'
-import { getToken, getUser } from '../utils/session';
+import { getToken, getUser, hasRole } from '../utils/session';
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -88,14 +88,10 @@ router.beforeEach((to) => {
   }
 
   // 3. Comprobar restricciones de Rol (Si la ruta tiene limitaciones)
-  if (to.meta.roles) {
-    const hasRolePermission = user && to.meta.roles.includes(user.role);
-    
-    if (!hasRolePermission) {
-      // Si está logueado pero no tiene el rol necesario, le mandamos al Panel Central
-      alert('Acceso denegado: Tu perfil de operario no tiene permisos para esta sección.');
-      return { name: 'dashboard' };
-    }
+  if (to.meta.roles && !hasRole(...to.meta.roles)) {
+    // Si está logueado pero no tiene el rol necesario, le mandamos al Panel Central
+    alert('Acceso denegado: Tu perfil de operario no tiene permisos para esta sección.');
+    return { name: 'dashboard' };
   }
 
   // Si pasa todos los controles, se le permite continuar el viaje

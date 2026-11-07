@@ -219,7 +219,7 @@ class OrderApiTest extends IntegrationTestBase {
 
         String number = JsonPath.read(mvc.perform(admin(get("/api/lotes/" + lot))).andReturn().getResponse().getContentAsString(), "$.lotNumber");
         body(addLine(order(), lot(1), 1));
-        mvc.perform(admin(get("/api/lotes/estado/" + number))).andExpect(jsonPath("$.currentState").value("BLOQUEADO"));
+        mvc.perform(admin(get("/api/trazabilidad/lotes/" + number + "/status"))).andExpect(jsonPath("$.currentState").value("BLOQUEADO"));
     }
 
     @Test
