@@ -13,7 +13,6 @@ import { parseLabel } from '../utils/labelParser';
 // Accesos del panel. El calendario es otro bloque más y también se puede mover.
 const MODULES = {
   pedidos: { label: 'Pedidos', path: '/pedidos' },
-  'pedidos-cerrados': { label: 'Pedidos Cerrados', path: '/pedidos/cerrados' },
   inventario: { label: 'Inventario Stock', path: '/inventario' },
   lotes: { label: 'Gestión de Lotes', path: '/lotes' },
   historial: { label: 'Historial Visibilizar', path: '/historial-global' },

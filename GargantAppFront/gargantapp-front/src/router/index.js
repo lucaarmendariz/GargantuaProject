@@ -6,7 +6,6 @@ import HistorialGlobalView from '../views/HistorialGlobalView.vue'
 import ProduccionView from '../views/ProduccionView.vue'
 import PedidosView from '../views/PedidosView.vue'
 import PedidoDetalleView from '../views/PedidoDetalleView.vue'
-import PedidosCerradosView from '../views/PedidosCerradosView.vue'
 import TrazabilidadLoteView from '../views/TrazabilidadLoteView.vue'
 import LotesView from '../views/LotesView.vue'
 import { getToken, getUser } from '../utils/session';
@@ -50,10 +49,9 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      // Los pedidos cerrados son ahora una pestaña de Pedidos; la ruta antigua sigue funcionando
       path: '/pedidos/cerrados',
-      name: 'pedidos-cerrados',
-      component: PedidosCerradosView,
-      meta: { requiresAuth: true }
+      redirect: { name: 'pedidos', query: { tab: 'cerrados' } }
     },
     {
       path: '/pedidos/:id',

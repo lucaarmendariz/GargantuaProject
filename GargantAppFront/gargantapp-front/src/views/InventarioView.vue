@@ -4,9 +4,19 @@ import { useRouter } from 'vue-router';
 import { useInventory } from '../composables/useInventory';
 import ProductForm from '../components/ProductForm.vue';
 import LotForm from '../components/LotForm.vue';
+import TabMenu from '../components/TabMenu.vue';
+import { useTabRoute } from '../composables/useTabRoute';
 import { formatEpochDate } from '../utils/date';
 
 const router = useRouter();
+
+// Menú del módulo: una acción por pestaña
+const tabs = [
+  { id: 'lotes', label: 'Visualizar lotes' },
+  { id: 'activo', label: 'Añadir definición de activo' },
+  { id: 'lote', label: 'Añadir lote' },
+];
+const activeTab = useTabRoute(tabs);
 const {
   products, loading, searchQuery, filteredProducts,
   initInventory, loadProducts, loadProductLots, getProductLots, deleteProduct, updateProduct
@@ -61,107 +71,113 @@ const handleConfirmDelete = (id, name) => {
     </header>
 
     <div class="card-body">
-      <div class="forms-container">
+      <TabMenu v-model="activeTab" :tabs="tabs" label="Acciones de inventario" />
+
+      <div v-if="activeTab === 'activo'" id="panel-activo" role="tabpanel" aria-labelledby="tab-activo" class="tab-panel form-tab">
         <ProductForm @success="loadProducts" />
+      </div>
+
+      <div v-if="activeTab === 'lote'" id="panel-lote" role="tabpanel" aria-labelledby="tab-lote" class="tab-panel form-tab">
         <LotForm :products="products" @success="onLotCreated" />
       </div>
 
-      <div class="search-box">
-        <input v-model="searchQuery" type="text"
-          placeholder="Buscar por SKU, nombre del artículo o descripción técnica..." class="search-input" />
-      </div>
+      <div v-if="activeTab === 'lotes'" id="panel-lotes" role="tabpanel" aria-labelledby="tab-lotes" class="tab-panel">
+        <div class="search-box">
+          <input v-model="searchQuery" type="text"
+            placeholder="Buscar por SKU, nombre del artículo o descripción técnica..." class="search-input" />
+        </div>
 
-      <h3 class="section-title">Catálogo Actual de Artículos Activos</h3>
-      <div v-if="loading" class="loader">Consultando base de datos de planta...</div>
+        <h3 class="section-title">Catálogo Actual de Artículos Activos</h3>
+        <div v-if="loading" class="loader">Consultando base de datos de planta...</div>
 
-      <div v-else class="table-responsive">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Código SKU</th>
-              <th>Nombre del Artículo</th>
-              <th>Descripción Técnica</th>
-              <th>Lotes (disponible / stock)</th>
-              <th>Estado</th>
-              <th>Acciones Planta</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="prod in filteredProducts" :key="prod.productId" :class="{ 'row-inactive': !prod.active }">
-              <td data-label="ID"><code>#{{ prod.productId }}</code></td>
-              <td data-label="Código SKU">
-                <div class="code-cell">
-                  <span class="sku-tag">{{ prod.sku }}</span>
-                  <input v-if="editingProductId === prod.productId" v-model="editForm.gtin" class="inline-input"
-                    type="text" inputmode="numeric" aria-label="Código de barras (EAN/GTIN)" placeholder="Código de barras" />
-                  <span v-else-if="prod.gtin" class="gtin-tag" title="Código de barras (GTIN)">EAN {{ prod.gtin }}</span>
-                </div>
-              </td>
+        <div v-else class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Código SKU</th>
+                <th>Nombre del Artículo</th>
+                <th>Descripción Técnica</th>
+                <th>Lotes (disponible / stock)</th>
+                <th>Estado</th>
+                <th>Acciones Planta</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="prod in filteredProducts" :key="prod.productId" :class="{ 'row-inactive': !prod.active }">
+                <td data-label="ID"><code>#{{ prod.productId }}</code></td>
+                <td data-label="Código SKU">
+                  <div class="code-cell">
+                    <span class="sku-tag">{{ prod.sku }}</span>
+                    <input v-if="editingProductId === prod.productId" v-model="editForm.gtin" class="inline-input"
+                      type="text" inputmode="numeric" aria-label="Código de barras (EAN/GTIN)" placeholder="Código de barras" />
+                    <span v-else-if="prod.gtin" class="gtin-tag" title="Código de barras (GTIN)">EAN {{ prod.gtin }}</span>
+                  </div>
+                </td>
 
-              <template v-if="editingProductId !== prod.productId">
-                <td data-label="Artículo"><strong>{{ prod.name }}</strong></td>
-                <td data-label="Descripción">{{ prod.description || 'Sin descripción técnica registrada' }}</td>
-              </template>
-              <template v-else>
-                <td data-label="Artículo"><input v-model="editForm.name" class="inline-input" type="text" /></td>
-                <td data-label="Descripción"><input v-model="editForm.description" class="inline-input" type="text" /></td>
-              </template>
-
-              <td data-label="Lotes">
-                <div v-if="getProductLots(prod.productId).length > 0" class="lots-container">
-                  <RouterLink v-for="lot in getProductLots(prod.productId)" :key="lot.lotNumber" class="lot-pill"
-                    :to="`/lotes/${lot.lotId}/trazabilidad`"
-                    :title="`Expiración: ${formatEpochDate(lot.expirationDate)}. Ver trazabilidad`">
-                    <strong>{{ lot.lotNumber }}</strong>: {{ lot.availableQuantity }} / {{ lot.currentStock }} {{ lot.measureUnit }}
-                  </RouterLink>
-                </div>
-                <span v-else class="no-lots">Sin lotes activos</span>
-              </td>
-
-              <td data-label="Estado">
                 <template v-if="editingProductId !== prod.productId">
-                  <span :class="prod.active ? 'badge-active' : 'badge-inactive'">
-                    {{ prod.active ? 'Activo' : 'Inactivo' }}
-                  </span>
+                  <td data-label="Artículo"><strong>{{ prod.name }}</strong></td>
+                  <td data-label="Descripción">{{ prod.description || 'Sin descripción técnica registrada' }}</td>
                 </template>
                 <template v-else>
-                  <select v-model="editForm.active">
-                    <option :value="true">Activo</option>
-                    <option :value="false">Inactivo</option>
-                  </select>
+                  <td data-label="Artículo"><input v-model="editForm.name" class="inline-input" type="text" /></td>
+                  <td data-label="Descripción"><input v-model="editForm.description" class="inline-input" type="text" /></td>
                 </template>
-              </td>
 
-              <td class="cell-actions" data-label="Acciones">
-                <div v-if="editingProductId !== prod.productId" class="actions-wrapper">
-                  <button @click="startEdit(prod)" class="btn-action btn-edit" title="Editar Metadatos">Editar</button>
-                  <button v-if="prod.active" @click="handleConfirmDelete(prod.productId, prod.name)"
-                    class="btn-action btn-delete" title="Dar de baja">
-                    Dar de baja
-                  </button>
-                </div>
-                <div v-else class="actions-wrapper">
-                  <button @click="saveProductEdit" class="btn-action btn-save" title="Guardar">Guardar</button>
-                  <button @click="cancelEdit" class="btn-action btn-cancel" title="Cancelar">Cancelar</button>
-                </div>
-              </td>
-            </tr>
-            <tr v-if="filteredProducts.length === 0">
-              <td colspan="7" class="text-center">No se encontraron productos que coincidan con la búsqueda.</td>
-            </tr>
-          </tbody>
-        </table>
+                <td data-label="Lotes">
+                  <div v-if="getProductLots(prod.productId).length > 0" class="lots-container">
+                    <RouterLink v-for="lot in getProductLots(prod.productId)" :key="lot.lotNumber" class="lot-pill"
+                      :to="`/lotes/${lot.lotId}/trazabilidad`"
+                      :title="`Expiración: ${formatEpochDate(lot.expirationDate)}. Ver trazabilidad`">
+                      <strong>{{ lot.lotNumber }}</strong>: {{ lot.availableQuantity }} / {{ lot.currentStock }} {{ lot.measureUnit }}
+                    </RouterLink>
+                  </div>
+                  <span v-else class="no-lots">Sin lotes activos</span>
+                </td>
+
+                <td data-label="Estado">
+                  <template v-if="editingProductId !== prod.productId">
+                    <span :class="prod.active ? 'badge-active' : 'badge-inactive'">
+                      {{ prod.active ? 'Activo' : 'Inactivo' }}
+                    </span>
+                  </template>
+                  <template v-else>
+                    <select v-model="editForm.active">
+                      <option :value="true">Activo</option>
+                      <option :value="false">Inactivo</option>
+                    </select>
+                  </template>
+                </td>
+
+                <td class="cell-actions" data-label="Acciones">
+                  <div v-if="editingProductId !== prod.productId" class="actions-wrapper">
+                    <button @click="startEdit(prod)" class="btn-action btn-edit" title="Editar Metadatos">Editar</button>
+                    <button v-if="prod.active" @click="handleConfirmDelete(prod.productId, prod.name)"
+                      class="btn-action btn-delete" title="Dar de baja">
+                      Dar de baja
+                    </button>
+                  </div>
+                  <div v-else class="actions-wrapper">
+                    <button @click="saveProductEdit" class="btn-action btn-save" title="Guardar">Guardar</button>
+                    <button @click="cancelEdit" class="btn-action btn-cancel" title="Cancelar">Cancelar</button>
+                  </div>
+                </td>
+              </tr>
+              <tr v-if="filteredProducts.length === 0">
+                <td colspan="7" class="text-center">No se encontraron productos que coincidan con la búsqueda.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.forms-container {
-  display: grid;
-  gap: clamp(16px, 3vw, 24px);
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+/* Los formularios de alta, solos en su pestaña, no ocupan todo el ancho */
+.form-tab {
+  max-width: 760px;
 }
 
 :deep(.form-section h3) {

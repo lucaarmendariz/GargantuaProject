@@ -4,7 +4,6 @@
 export const DEFAULT_LAYOUT = [
   'calendario',
   'pedidos',
-  'pedidos-cerrados',
   'inventario',
   'lotes',
   'historial',

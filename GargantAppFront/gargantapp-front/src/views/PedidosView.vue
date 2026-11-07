@@ -2,12 +2,23 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import apiClient from '../api';
+import TabMenu from '../components/TabMenu.vue';
+import PedidosCerradosList from '../components/PedidosCerradosList.vue';
+import { useTabRoute } from '../composables/useTabRoute';
 import { dateInputToEpoch, formatEpochDate, todayInputValue } from '../utils/date';
 import { errorMessage } from '../utils/errors';
 import { getUser } from '../utils/session';
 
 const router = useRouter();
 const canManage = computed(() => ['ADMIN', 'ENCARGADO'].includes(getUser()?.role));
+
+// Menú del módulo: una acción por pestaña. Crear pedidos solo para ADMIN y ENCARGADO.
+const tabs = computed(() => [
+  { id: 'en-curso', label: 'Pedidos en curso' },
+  ...(canManage.value ? [{ id: 'nuevo', label: 'Nuevo pedido' }] : []),
+  { id: 'cerrados', label: 'Pedidos cerrados' },
+]);
+const activeTab = useTabRoute(tabs);
 
 const orders = ref([]);
 const loading = ref(true);
@@ -25,7 +36,7 @@ const loadOrders = async () => {
   loading.value = true;
   listError.value = '';
   try {
-    // Los pedidos cerrados tienen su propio apartado
+    // Los pedidos cerrados tienen su propia pestaña
     orders.value = await apiClient.get(`/pedidos?estado=${statusFilter.value}`);
   } catch (error) {
     orders.value = [];
@@ -62,12 +73,13 @@ watch(statusFilter, loadOrders);
     </header>
 
     <div class="card-body">
-      <p class="item-meta flow-help">
+      <TabMenu v-model="activeTab" :tabs="tabs" label="Acciones de pedidos" />
+
+      <p v-if="activeTab !== 'cerrados'" class="item-meta flow-help">
         Ciclo de un pedido: Abierto → Preparado → Entregado → Cerrado (automático a los 2 días de la entrega).
-        <RouterLink to="/pedidos/cerrados">Ver pedidos cerrados</RouterLink>
       </p>
 
-      <section v-if="canManage" class="panel">
+      <section v-if="activeTab === 'nuevo'" id="panel-nuevo" role="tabpanel" aria-labelledby="tab-nuevo" class="panel">
         <h3>Nuevo pedido</h3>
         <form @submit.prevent="createOrder" class="order-form">
           <div class="form-group">
@@ -93,7 +105,7 @@ watch(statusFilter, loadOrders);
         </form>
       </section>
 
-      <section class="panel">
+      <section v-if="activeTab === 'en-curso'" id="panel-en-curso" role="tabpanel" aria-labelledby="tab-en-curso" class="panel">
         <div class="list-head">
           <h3>Listado de pedidos</h3>
           <div class="form-group filter">
@@ -122,6 +134,10 @@ watch(statusFilter, loadOrders);
           </RouterLink>
         </div>
       </section>
+
+      <div v-if="activeTab === 'cerrados'" id="panel-cerrados" role="tabpanel" aria-labelledby="tab-cerrados" class="tab-panel">
+        <PedidosCerradosList />
+      </div>
     </div>
   </div>
 </template>
@@ -152,5 +168,4 @@ watch(statusFilter, loadOrders);
 
 .filter {
   flex: 0 1 220px;
-}
-</style>
+}</style>
