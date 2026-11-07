@@ -15,11 +15,15 @@ export function useAction(reload) {
     try {
       await action();
       actionSuccess.value = success;
-      await reload();
     } catch (error) {
       actionError.value = await errorMessage(error, fallback);
     } finally {
-      busy.value = false;
+      // También tras un error: la pantalla vuelve a mostrar lo que de verdad está guardado
+      try {
+        await reload();
+      } finally {
+        busy.value = false;
+      }
     }
   };
 

@@ -2,7 +2,6 @@ package com.example.trazabilidadapi.controllers;
 
 import com.example.trazabilidadapi.models.AppModule;
 import com.example.trazabilidadapi.models.CreateUserRequest;
-import com.example.trazabilidadapi.models.ModuleAccess;
 import com.example.trazabilidadapi.models.RolePermission;
 import com.example.trazabilidadapi.models.UpdateUserRequest;
 import com.example.trazabilidadapi.models.UserSummary;
@@ -32,13 +31,9 @@ public class AccessController {
     }
 
     /** Lo que el usuario conectado puede hacer: el front muestra u oculta modulos y botones con esto. */
-    public record MyAccess(String role, List<ModuleAccess> modules) {
-    }
-
     @GetMapping("/me/permisos")
-    public MyAccess myAccess(@AuthenticationPrincipal Jwt jwt) {
-        UserAccess access = service.forUser(jwt.getSubject());
-        return new MyAccess(access.role(), access.modules());
+    public UserAccess myAccess(@AuthenticationPrincipal Jwt jwt) {
+        return service.forUser(jwt.getSubject());
     }
 
     // --- Panel del proveedor ---

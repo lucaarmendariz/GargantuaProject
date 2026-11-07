@@ -87,6 +87,10 @@ public class AccessService {
         if (username.isEmpty() || name.isEmpty()) {
             throw new IllegalArgumentException("El usuario y el nombre son obligatorios.");
         }
+        // Tamaños de las columnas de app_user
+        if (username.length() > 50 || name.length() > 100) {
+            throw new IllegalArgumentException("El usuario admite 50 caracteres y el nombre 100.");
+        }
         if (request.password() == null || request.password().length() < MIN_PASSWORD) {
             throw new IllegalArgumentException("La contraseña debe tener al menos " + MIN_PASSWORD + " caracteres.");
         }

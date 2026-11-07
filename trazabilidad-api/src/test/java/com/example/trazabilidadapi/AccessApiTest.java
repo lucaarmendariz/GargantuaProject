@@ -76,6 +76,29 @@ class AccessApiTest extends IntegrationTestBase {
     }
 
     @Test
+    void whoManagesOrdersCanReadLotsToAssignThemButNotChangeThem() throws Exception {
+        try {
+            setPermission("ENCARGADO", "INVENTARIO", "NINGUNO");
+            setPermission("ENCARGADO", "LOTES", "NINGUNO");
+            // El detalle del pedido carga lotes y productos para la pestaña "Asignar lote"
+            mvc.perform(as("ENCARGADO", get("/api/lotes"))).andExpect(status().isOk());
+            mvc.perform(as("ENCARGADO", get("/api/productos/admin"))).andExpect(status().isOk());
+            mvc.perform(as("ENCARGADO", put("/api/lotes/1")).content("{\"quantity\":999,\"measureUnit\":\"UNITS\"}"))
+                    .andExpect(status().isForbidden());
+        } finally {
+            setPermission("ENCARGADO", "INVENTARIO", "GESTIONAR");
+            setPermission("ENCARGADO", "LOTES", "GESTIONAR");
+        }
+    }
+
+    @Test
+    void tooLongUsernameIsRejectedWithAClearMessage() throws Exception {
+        String user = "{\"username\":\"%s\",\"name\":\"Largo\",\"role\":\"OPERARIO\",\"password\":\"larga-segura\"}";
+        mvc.perform(as("ADMIN", post("/api/admin/usuarios")).content(user.formatted("u".repeat(51))))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void eachPanelOnlyOpensForItsRole() throws Exception {
         mvc.perform(get("/api/admin/usuarios")).andExpect(status().isUnauthorized());
         mvc.perform(as("ENCARGADO", get("/api/admin/usuarios"))).andExpect(status().isForbidden());

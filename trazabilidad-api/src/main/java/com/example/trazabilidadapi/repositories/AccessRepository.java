@@ -4,17 +4,15 @@ import com.example.trazabilidadapi.models.AppModule;
 import com.example.trazabilidadapi.models.ModuleAccess;
 import com.example.trazabilidadapi.models.RolePermission;
 import com.example.trazabilidadapi.models.UserSummary;
+import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.sql.CallableStatement;
-import java.sql.Connection;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
+import java.util.function.Supplier;
 
 /** Modulos contratados, permisos por rol y usuarios del cliente (procedimientos del bloque 5). */
 @Repository
@@ -32,45 +30,36 @@ public class AccessRepository {
 
     /** Rol del usuario y su acceso a cada modulo. Lista vacia si no existe o esta desactivado. */
     public List<AccessRow> accessForUser(String username) {
-        return query("{call Access_GetForUser(?)}", stmt -> stmt.setString(1, username),
-                rs -> new AccessRow(rs.getString("role"),
-                        new ModuleAccess(rs.getString("module_code"), rs.getString("name"), rs.getString("access"))));
+        return run(() -> jdbcTemplate.query("CALL Access_GetForUser(?)", (rs, i) -> new AccessRow(rs.getString("role"),
+                new ModuleAccess(rs.getString("module_code"), rs.getString("name"), rs.getString("access"))), username));
     }
 
     public List<AppModule> getModules() {
-        return query("{call Module_GetAll()}", stmt -> { },
-                rs -> new AppModule(rs.getString("module_code"), rs.getString("name"), rs.getBoolean("is_enabled")));
+        return run(() -> jdbcTemplate.query("CALL Module_GetAll()", (rs, i) ->
+                new AppModule(rs.getString("module_code"), rs.getString("name"), rs.getBoolean("is_enabled"))));
     }
 
     public void setModuleEnabled(String moduleCode, boolean enabled) {
-        execute("{call Module_SetEnabled(?, ?)}", stmt -> {
-            stmt.setString(1, moduleCode);
-            stmt.setBoolean(2, enabled);
-        });
+        run(() -> jdbcTemplate.update("CALL Module_SetEnabled(?, ?)", moduleCode, enabled));
     }
 
     public List<RolePermission> getPermissions() {
-        return query("{call RolePermission_GetAll()}", stmt -> { },
-                rs -> new RolePermission(rs.getString("role"), rs.getString("module_code"), rs.getString("access")));
+        return run(() -> jdbcTemplate.query("CALL RolePermission_GetAll()", (rs, i) ->
+                new RolePermission(rs.getString("role"), rs.getString("module_code"), rs.getString("access"))));
     }
 
     public void setPermission(String role, String moduleCode, String access) {
-        execute("{call RolePermission_Set(?, ?, ?)}", stmt -> {
-            stmt.setString(1, role);
-            stmt.setString(2, moduleCode);
-            stmt.setString(3, access);
-        });
+        run(() -> jdbcTemplate.update("CALL RolePermission_Set(?, ?, ?)", role, moduleCode, access));
     }
 
     public List<UserSummary> getUsers() {
-        return query("{call AppUser_GetAll()}", stmt -> { },
-                rs -> new UserSummary(rs.getInt("user_id"), rs.getString("username"), rs.getString("name"),
-                        rs.getString("role"), rs.getBoolean("is_active"), rs.getObject("created_at", Long.class)));
+        return run(() -> jdbcTemplate.query("CALL AppUser_GetAll()", (rs, i) ->
+                new UserSummary(rs.getInt("user_id"), rs.getString("username"), rs.getString("name"),
+                        rs.getString("role"), rs.getBoolean("is_active"), rs.getObject("created_at", Long.class))));
     }
 
     public int createUser(String username, String passwordHash, String name, String role) {
-        try (Connection conn = Objects.requireNonNull(jdbcTemplate.getDataSource()).getConnection();
-             CallableStatement stmt = conn.prepareCall("{call AppUser_Create(?, ?, ?, ?, ?)}")) {
+        return run(() -> jdbcTemplate.execute("{call AppUser_Create(?, ?, ?, ?, ?)}", (CallableStatement stmt) -> {
             stmt.setString(1, username);
             stmt.setString(2, passwordHash);
             stmt.setString(3, name);
@@ -78,62 +67,25 @@ public class AccessRepository {
             stmt.registerOutParameter(5, Types.INTEGER);
             stmt.execute();
             return stmt.getInt(5);
-        } catch (SQLException e) {
-            throw translate(e);
-        }
+        }));
     }
 
     public void updateUser(int userId, String role, boolean active) {
-        execute("{call AppUser_Update(?, ?, ?)}", stmt -> {
-            stmt.setInt(1, userId);
-            stmt.setString(2, role);
-            stmt.setBoolean(3, active);
-        });
-    }
-
-    // --- Ejecucion de procedimientos ---
-
-    private interface Params {
-        void apply(CallableStatement stmt) throws SQLException;
-    }
-
-    private interface Row<T> {
-        T map(ResultSet rs) throws SQLException;
-    }
-
-    private <T> List<T> query(String sql, Params params, Row<T> row) {
-        try (Connection conn = Objects.requireNonNull(jdbcTemplate.getDataSource()).getConnection();
-             CallableStatement stmt = conn.prepareCall(sql)) {
-            params.apply(stmt);
-            List<T> result = new ArrayList<>();
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    result.add(row.map(rs));
-                }
-            }
-            return result;
-        } catch (SQLException e) {
-            throw translate(e);
-        }
-    }
-
-    private void execute(String sql, Params params) {
-        try (Connection conn = Objects.requireNonNull(jdbcTemplate.getDataSource()).getConnection();
-             CallableStatement stmt = conn.prepareCall(sql)) {
-            params.apply(stmt);
-            stmt.execute();
-        } catch (SQLException e) {
-            throw translate(e);
-        }
+        run(() -> jdbcTemplate.update("CALL AppUser_Update(?, ?, ?)", userId, role, active));
     }
 
     // Errores de negocio de los procedimientos (130-133): el mensaje se muestra al usuario
-    private static RuntimeException translate(SQLException e) {
-        String message = String.valueOf(e.getMessage()).replaceFirst("^\\(conn=\\d+\\)\\s*", "");
-        return switch (e.getErrorCode()) {
-            case 132 -> new IllegalStateException(message);
-            case 130, 131, 133 -> new IllegalArgumentException(message);
-            default -> new RuntimeException("Error en la base de datos de permisos", e);
-        };
+    private static <T> T run(Supplier<T> call) {
+        try {
+            return call.get();
+        } catch (DataAccessException e) {
+            if (!(e.getMostSpecificCause() instanceof SQLException sql)) throw e;
+            String message = String.valueOf(sql.getMessage()).replaceFirst("^\\(conn=\\d+\\)\\s*", "");
+            throw switch (sql.getErrorCode()) {
+                case 132 -> new IllegalStateException(message);
+                case 130, 131, 133 -> new IllegalArgumentException(message);
+                default -> e;
+            };
+        }
     }
 }

@@ -133,7 +133,19 @@ Módulos: `PEDIDOS`, `INVENTARIO`, `LOTES`, `HISTORIAL` y `PRODUCCION`. Un módu
 
 Permisos por defecto (los de antes de existir el panel): `ENCARGADO` gestiona Pedidos, Inventario y Lotes; `OPERARIO` ve Pedidos y Producción.
 
-Usuario de prueba del proveedor: `superadmin` / `moncorp2026`. **En una instalación real, cámbiale la contraseña.**
+Usuario de prueba del proveedor (solo en la base de datos de desarrollo, `03_seeds.sql`): `superadmin` / `moncorp2026`.
+
+**Activar la cuenta del proveedor en una instalación real.** La migración `004` crea `superadmin` desactivado, porque la contraseña de prueba es pública. Genera el hash de una contraseña propia y actívalo, desde `trazabilidad-api/database`:
+
+```bash
+# Hash BCrypt de la contraseña (htpasswd viene con Apache; también sirve cualquier generador BCrypt)
+htpasswd -nbBC 10 "" 'TU-CONTRASEÑA' | tr -d ':\n' | sed 's/$2y/$2a/'
+set -a; source ./.env; set +a
+docker exec -i -e MYSQL_PWD="$DB_PASSWORD" trazabilidad_db mariadb -utrazabilidad_app traceability_lean \
+  -e "UPDATE app_user SET password_hash='<HASH>', is_active=1 WHERE username='superadmin';"
+```
+
+> `update_db.sh` y `03_seeds.sql` cargan usuarios con contraseñas públicas (`luca`, `superadmin`): úsalos solo en desarrollo.
 
 ### 4. Frontend
 
