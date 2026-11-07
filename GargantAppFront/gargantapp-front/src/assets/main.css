@@ -140,6 +140,11 @@ button:hover {
   background: var(--gargantua-orange-dark);
 }
 
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .btn-back {
   background: transparent;
   border-color: var(--gargantua-gold);

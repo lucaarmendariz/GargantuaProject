@@ -85,28 +85,6 @@ public class ResultSetMapper {
                 .build();
     }
 
-    public static CurrentLotStatus getCurrentLotStatusFromResultSet(ResultSet rs) throws SQLException {
-        return CurrentLotStatus.builder()
-                .productId(rs.getInt("product_id"))
-                .productSku(rs.getString("product_sku"))
-                .productName(rs.getString("product_name"))
-                .lotId(rs.getInt("lot_id"))
-                .lotNumber(rs.getString("lot_number"))
-                .initialQuantity(rs.getBigDecimal("initial_quantity"))
-                .reservedQuantity(rs.getBigDecimal("reserved_quantity"))
-                .consumedQuantity(rs.getBigDecimal("consumed_quantity"))
-                .currentStock(rs.getBigDecimal("current_stock"))
-                .availableQuantity(rs.getBigDecimal("available_quantity"))
-                .measureUnit(rs.getString("measure_unit"))
-                .expirationDate(rs.getObject("expiration_date", Long.class))
-                .currentState(rs.getString("current_state"))
-                .lastUpdate(rs.getObject("last_update", Long.class))
-                .lastOperator(rs.getString("last_operator"))
-                .ocrRawText(rs.getString("ocr_raw_text"))
-                .lastObservations(rs.getString("last_observations"))
-                .build();
-    }
-
     public static CustomerOrder getOrderFromResultSet(ResultSet rs) throws SQLException {
         return CustomerOrder.builder()
                 .orderId(rs.getInt("order_id"))

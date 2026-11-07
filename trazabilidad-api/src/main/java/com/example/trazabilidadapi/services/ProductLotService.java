@@ -1,7 +1,6 @@
 package com.example.trazabilidadapi.services;
 
 import com.example.trazabilidadapi.models.ProductLot;
-import com.example.trazabilidadapi.models.CurrentLotStatus;
 import com.example.trazabilidadapi.repositories.ProductLotRepository;
 import org.springframework.stereotype.Service;
 
@@ -45,10 +44,5 @@ public class ProductLotService {
     // 2.6 DELETE
     public void deleteLot(int lotId) {
         repository.deleteLot(lotId);
-    }
-
-    // 3.3 TRACEABILITY ENGINE (OCR / STATUS)
-    public CurrentLotStatus getCurrentLotStatus(String lotNumber) {
-        return repository.getCurrentStatus(lotNumber);
     }
 }

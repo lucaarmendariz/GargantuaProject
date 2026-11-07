@@ -4,6 +4,7 @@ import apiClient from '../api';
 import CameraScanner from './CameraScanner.vue';
 import { dateInputToEpoch } from '../utils/date';
 import { normalizeGtin, parseLabel } from '../utils/labelParser';
+import { MEASURE_UNITS } from '../utils/units';
 
 const props = defineProps({
   products: { type: Array, required: true }
@@ -162,9 +163,7 @@ const handleCreateLot = async () => {
         <div class="form-group">
           <label for="lot-unit">Unidad Medida:</label>
           <select id="lot-unit" v-model="lotMeasureUnit">
-            <option value="UNITS">Unidades (Fichas)</option>
-            <option value="KILOS">Kilogramos (Materia prima)</option>
-            <option value="BOXES">Cajas de empaquetado</option>
+            <option v-for="unit in MEASURE_UNITS" :key="unit.value" :value="unit.value">{{ unit.label }}</option>
           </select>
         </div>
         <div class="form-group">

@@ -6,6 +6,8 @@
 //   - Un código sin más (Code128, EAN...): se toma como número de lote.
 // Nunca se guarda nada solo: el usuario revisa los campos antes de dar de alta.
 
+import { normalizeText } from './search';
+
 const GS = '\u001d'; // Separador FNC1 de los códigos GS1
 
 // AIs de GS1 que nos interesan: longitud fija o variable (hasta el separador)
@@ -43,12 +45,7 @@ export function parseWrittenDate(text) {
   return null;
 }
 
-function normalize(text) {
-  return String(text ?? '')
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toUpperCase();
-}
+const normalize = (text) => normalizeText(text).toUpperCase();
 
 function parseGs1(raw) {
   let text = raw.replace(/^\][A-Za-z]\d/, ''); // Prefijo de simbología (]C1, ]d2...)

@@ -57,7 +57,7 @@ class InventoryApiTest extends IntegrationTestBase {
     @Test
     void statusReturnsEpochSecondsInUtc() throws Exception {
         // Dato de prueba: 2026-05-19 14:00:00 UTC
-        mvc.perform(admin(get("/api/lotes/estado/LOT-2026-05-19A")))
+        mvc.perform(admin(get("/api/trazabilidad/lotes/LOT-2026-05-19A/status")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.lastUpdate").isNumber())
                 .andExpect(jsonPath("$.initialQuantity", closeTo(50.0, 0.0001)));
@@ -68,7 +68,6 @@ class InventoryApiTest extends IntegrationTestBase {
 
     @Test
     void missingLotReturns404() throws Exception {
-        mvc.perform(admin(get("/api/lotes/estado/NO-EXISTE"))).andExpect(status().isNotFound());
         mvc.perform(admin(get("/api/trazabilidad/lotes/NO-EXISTE/status"))).andExpect(status().isNotFound());
         mvc.perform(admin(get("/api/historial/lote/99999"))).andExpect(status().isNotFound());
     }

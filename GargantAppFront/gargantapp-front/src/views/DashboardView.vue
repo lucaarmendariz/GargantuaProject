@@ -2,7 +2,7 @@
 import { ref, onMounted, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import apiClient from '../api';
-import { clearSession } from '../utils/session';
+import { clearSession, getUser } from '../utils/session';
 import { dayRange, formatDayLong, formatEpochDate, formatEpochDateTime, isExpired } from '../utils/date';
 import { errorMessage } from '../utils/errors';
 import { loadLayout, moveItem, resetLayout, saveLayout } from '../utils/dashboardLayout';
@@ -20,7 +20,8 @@ const MODULES = {
 };
 const blockLabel = (id) => (id === 'calendario' ? 'Calendario' : MODULES[id].label);
 
-const user = ref(null);
+// El guardián del router ya garantiza que hay sesión
+const user = getUser();
 const lotInput = ref('');
 const lotData = ref(null);
 const errorMsg = ref('');
@@ -35,26 +36,13 @@ const months = [
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
 ];
 
-onMounted(() => {
-  // Verificar sesión
-  const savedUser = localStorage.getItem('user');
-  if (!savedUser) {
-    router.push('/');
-  } else {
-    user.value = JSON.parse(savedUser);
-    layout.value = loadLayout(layoutOwner());
-    loadDay();
-  }
-});
-
 // --- ORDEN PERSONALIZABLE DE LOS BLOQUES ---
-const layout = ref([]);
+const layoutOwner = () => user?.username || user?.name || 'anonimo';
+const layout = ref(loadLayout(layoutOwner()));
 const editingLayout = ref(false);
 const dragIndex = ref(null);
 const dropIndex = ref(null);
 const layoutStatus = ref('');
-
-const layoutOwner = () => user.value?.username || user.value?.name || 'anonimo';
 
 const applyLayout = (next, message) => {
   layout.value = next;
@@ -153,13 +141,9 @@ const calendarDays = computed(() => {
   return daysArray;
 });
 
-// Navegación del calendario
-const prevMonth = () => {
-  currentDate.value = new Date(currentYear.value, currentDate.value.getMonth() - 1, 1);
-};
-
-const nextMonth = () => {
-  currentDate.value = new Date(currentYear.value, currentDate.value.getMonth() + 1, 1);
+// Navegación del calendario: step -1 = mes anterior, +1 = mes siguiente
+const shiftMonth = (step) => {
+  currentDate.value = new Date(currentYear.value, currentDate.value.getMonth() + step, 1);
 };
 
 const selectDay = (dayObj) => {
@@ -170,20 +154,7 @@ const selectDay = (dayObj) => {
   }
 };
 
-// Comprobar si un día de la cuadrícula es "Hoy"
-const isToday = (date) => {
-  const today = new Date();
-  return date.getDate() === today.getDate() &&
-         date.getMonth() === today.getMonth() &&
-         date.getFullYear() === today.getFullYear();
-};
-
-// Comprobar si un día es el seleccionado por el operario
-const isSelected = (date) => {
-  return date.getDate() === selectedDate.value.getDate() &&
-         date.getMonth() === selectedDate.value.getMonth() &&
-         date.getFullYear() === selectedDate.value.getFullYear();
-};
+const sameDay = (a, b) => a.toDateString() === b.toDateString();
 
 // --- PEDIDOS Y PRODUCTOS EN USO DEL DIA SELECCIONADO ---
 const dayOrders = ref([]);
@@ -218,6 +189,7 @@ const loadDay = async () => {
   }
 };
 
+onMounted(loadDay);
 watch(selectedDate, loadDay);
 
 // --- RESTO DE FUNCIONES ---
@@ -307,9 +279,9 @@ const logout = () => {
 
             <div v-if="id === 'calendario'" class="full-calendar-widget panel">
               <div class="cal-nav">
-                <button @click="prevMonth" class="cal-nav-btn">Anterior</button>
+                <button @click="shiftMonth(-1)" class="cal-nav-btn">Anterior</button>
                 <span class="cal-title"><strong>{{ currentMonthName }}</strong> {{ currentYear }}</span>
-                <button @click="nextMonth" class="cal-nav-btn">Siguiente</button>
+                <button @click="shiftMonth(1)" class="cal-nav-btn">Siguiente</button>
               </div>
 
               <div class="cal-weekdays">
@@ -324,8 +296,8 @@ const logout = () => {
                   class="day-cell"
                   :class="{
                     'outside-month': !dayObj.isCurrentMonth,
-                    'today-cell': isToday(dayObj.date),
-                    'selected-cell': isSelected(dayObj.date)
+                    'today-cell': sameDay(dayObj.date, new Date()),
+                    'selected-cell': sameDay(dayObj.date, selectedDate)
                   }"
                 >
                   {{ dayObj.day }}
