@@ -77,7 +77,7 @@ Con la base de datos ya en marcha, desde la raíz del repositorio `docker compos
 
 ### Escanear etiquetas con la cámara del móvil
 
-En *Inventario → Registrar Entrada de Lote*, en la *Cámara OCR* del Panel Central y en *Producción Planta* hay un botón **Escanear con la cámara**. Lee códigos de barras y QR (Code128, EAN, QR, DataMatrix y GS1 con lote `(10)`, caducidad `(17)` y cantidad `(37)`) y, si la etiqueta no tiene código, reconoce el texto por OCR (`LOTE: ...`, `CAD: dd/mm/aaaa`, `ALB-...`). Los campos se rellenan solos y se revisan antes de guardar. El producto se reconoce por su código de barras (EAN/GTIN, campo del producto en *Inventario*) o por el SKU escrito en la etiqueta; si el código aún no es de ningún producto, al dar de alta el lote se guarda en el producto elegido y la próxima vez se reconoce solo.
+En *Inventario → Añadir lote*, en la *Cámara OCR* del Panel Central y en *Producción Planta* hay un botón **Escanear con la cámara**. Lee códigos de barras y QR (Code128, EAN, QR, DataMatrix y GS1 con lote `(10)`, caducidad `(17)` y cantidad `(37)`) y, si la etiqueta no tiene código, reconoce el texto por OCR (`LOTE: ...`, `CAD: dd/mm/aaaa`, `ALB-...`). Los campos se rellenan solos y se revisan antes de guardar. El producto se reconoce por su código de barras (EAN/GTIN, campo del producto en *Inventario*) o por el SKU escrito en la etiqueta; si el código aún no es de ningún producto, al dar de alta el lote se guarda en el producto elegido y la próxima vez se reconoce solo.
 
 Para usarlo desde un móvil (Safari solo deja usar la cámara en HTTPS, y el iPhone no acepta el certificado provisional de Vite):
 
@@ -143,7 +143,7 @@ Un pedido tiene una fecha programada y una línea por cada lote que usa. Pasa po
 1. **Reservar** (abierto): al asignar un lote baja su cantidad *disponible*, pero no su stock.
 2. **Preparar:** se indica lo realmente consumido en cada línea. Eso se resta del stock y se libera lo reservado. O se registran todas las líneas o no cambia nada. Desde aquí los lotes del pedido ya no se pueden cambiar.
 3. **Entregar:** se marca cuando el pedido sale hacia el cliente.
-4. **Cerrar (automático):** a las 48 h de la entrega la API pasa el pedido a `CERRADO` (`app.orders.auto-close-hours`). Los cerrados se consultan en su propio apartado, *Pedidos cerrados*, con buscador.
+4. **Cerrar (automático):** a las 48 h de la entrega la API pasa el pedido a `CERRADO` (`app.orders.auto-close-hours`). Los cerrados se consultan en la pestaña *Pedidos cerrados* del módulo Pedidos, con buscador.
 5. **Cancelar o retirar un lote** (solo abierto): se libera lo reservado sin tocar el stock.
 
 `stock = entrada - consumido` y `disponible = stock - reservado`. Un lote cuyo último movimiento manual es `BLOQUEADO` no se puede reservar ni consumir. Los lotes caducados se señalan, pero no se bloquean.

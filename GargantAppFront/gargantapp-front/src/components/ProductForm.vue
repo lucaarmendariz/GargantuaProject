@@ -36,7 +36,7 @@ const handleCreateProduct = async () => {
 
 <template>
   <section class="form-section panel">
-    <h3>1. Declarar Producto Maestro</h3>
+    <h3>Añadir definición de activo (producto maestro)</h3>
     <form @submit.prevent="handleCreateProduct" class="inner-form">
       <div class="form-grid-inputs">
         <div class="form-group">

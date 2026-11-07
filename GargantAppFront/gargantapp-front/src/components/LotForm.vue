@@ -126,7 +126,7 @@ const handleCreateLot = async () => {
 
 <template>
   <section class="form-section panel">
-    <h3>2. Registrar Entrada de Lote</h3>
+    <h3>Añadir lote (entrada de mercancía)</h3>
     <form @submit.prevent="handleCreateLot" class="inner-form">
       <button type="button" class="btn-secondary btn-scan" @click="openScanner">
         Escanear etiqueta con la cámara

@@ -106,6 +106,13 @@ code {
   padding: clamp(16px, 3vw, 32px) var(--page-inline);
 }
 
+/* Contenido de una pestaña del menú de un módulo (TabMenu) */
+.tab-panel {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(16px, 3vw, 24px);
+}
+
 .panel {
   min-width: 0;
   padding: clamp(16px, 2.5vw, 24px);

@@ -2,10 +2,20 @@
 import { onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import apiClient from '../api';
+import TabMenu from '../components/TabMenu.vue';
+import { useTabRoute } from '../composables/useTabRoute';
 import { dateInputToEpoch, epochToDateInput, formatEpochDate, formatEpochDateTime, isExpired } from '../utils/date';
 import { errorMessage } from '../utils/errors';
 
 const router = useRouter();
+
+// Menú del módulo: una acción por pestaña
+const tabs = [
+  { id: 'registrados', label: 'Lotes registrados' },
+  { id: 'buscar', label: 'Buscar lote por ID' },
+];
+const activeTab = useTabRoute(tabs);
+const searchDone = ref(false);
 
 const UNITS = [
   { value: 'UNITS', label: 'Unidades (Fichas)' },
@@ -53,7 +63,7 @@ const searchById = async () => {
   if (!lotIdInput.value) return;
   loading.value = true;
   listError.value = '';
-  productFilter.value = '';
+  searchDone.value = true;
   try {
     lots.value = [await apiClient.get(`/lotes/${lotIdInput.value}`)];
   } catch (error) {
@@ -66,12 +76,17 @@ const searchById = async () => {
   }
 };
 
-const showAll = () => {
-  lotIdInput.value = '';
-  if (productFilter.value) {
-    productFilter.value = '';
-  } else {
-    loadLots();
+// Vuelve a leer lo que se está viendo tras editar o eliminar: el listado o el lote buscado
+const refresh = async () => {
+  if (activeTab.value !== 'buscar') {
+    await loadLots();
+    return;
+  }
+  try {
+    lots.value = [await apiClient.get(`/lotes/${lotIdInput.value}`)];
+  } catch {
+    // El lote buscado se acaba de eliminar
+    lots.value = [];
   }
 };
 
@@ -99,9 +114,7 @@ const run = async (action, success, fallback) => {
   try {
     await action();
     actionSuccess.value = success;
-    // Tras un cambio se recarga el listado; la búsqueda por ID deja de aplicarse
-    lotIdInput.value = '';
-    await loadLots();
+    await refresh();
   } catch (error) {
     actionError.value = await errorMessage(error, fallback);
   } finally {
@@ -130,12 +143,28 @@ onMounted(async () => {
   } catch (error) {
     console.error('Error al cargar los productos', error);
   }
-  await loadLots();
+  if (activeTab.value === 'registrados') {
+    await loadLots();
+  } else {
+    loading.value = false;
+  }
 });
 
-watch(productFilter, () => {
-  if (productFilter.value) lotIdInput.value = '';
-  loadLots();
+watch(productFilter, loadLots);
+
+// Cada pestaña empieza limpia: el listado se vuelve a cargar y la búsqueda espera un ID
+watch(activeTab, (tab) => {
+  editingLotId.value = null;
+  actionError.value = '';
+  actionSuccess.value = '';
+  listError.value = '';
+  if (tab === 'registrados') {
+    loadLots();
+  } else {
+    lots.value = [];
+    lotIdInput.value = '';
+    searchDone.value = false;
+  }
 });
 </script>
 
@@ -147,91 +176,99 @@ watch(productFilter, () => {
     </header>
 
     <div class="card-body">
-      <section class="panel filters">
-        <div class="form-group">
-          <label for="lot-product-filter">Producto:</label>
-          <select id="lot-product-filter" v-model="productFilter">
-            <option value="">Todos los productos</option>
-            <option v-for="prod in products" :key="prod.productId" :value="prod.productId">
-              {{ prod.name }} ({{ prod.sku }})
-            </option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="lot-id-search">Buscar por ID de lote:</label>
-          <div class="input-row">
-            <input id="lot-id-search" v-model="lotIdInput" type="number" min="1" placeholder="Ej: 1" @keyup.enter="searchById" />
-            <button @click="searchById">Buscar</button>
+      <TabMenu v-model="activeTab" :tabs="tabs" label="Acciones de lotes" />
+
+      <div :id="`panel-${activeTab}`" role="tabpanel" :aria-labelledby="`tab-${activeTab}`" class="tab-panel">
+        <section v-if="activeTab === 'registrados'" class="panel filters">
+          <div class="form-group">
+            <label for="lot-product-filter">Producto:</label>
+            <select id="lot-product-filter" v-model="productFilter">
+              <option value="">Todos los productos</option>
+              <option v-for="prod in products" :key="prod.productId" :value="prod.productId">
+                {{ prod.name }} ({{ prod.sku }})
+              </option>
+            </select>
           </div>
-        </div>
-        <button v-if="productFilter || lotIdInput" @click="showAll" class="btn-secondary show-all">Ver todos</button>
-      </section>
+        </section>
 
-      <p v-if="actionSuccess" class="msg-success" role="status">{{ actionSuccess }}</p>
-      <p v-if="actionError" class="msg-error" role="alert">{{ actionError }}</p>
-
-      <section class="panel">
-        <h3>Lotes registrados</h3>
-        <p v-if="loading" class="empty-state">Cargando lotes...</p>
-        <p v-else-if="listError" class="msg-error">{{ listError }}</p>
-        <p v-else-if="lots.length === 0" class="empty-state">No hay lotes con este filtro.</p>
-        <div v-else class="item-list">
-          <div v-for="lot in lots" :key="lot.lotId" class="item-card">
-            <div class="item-head">
-              <span class="item-title">{{ lot.lotNumber }} <code>#{{ lot.lotId }}</code></span>
-              <span v-if="isExpired(lot.expirationDate)" class="status status-CADUCADO">CADUCADO</span>
+        <section v-else class="panel filters">
+          <div class="form-group">
+            <label for="lot-id-search">ID interno del lote:</label>
+            <div class="input-row">
+              <input id="lot-id-search" v-model="lotIdInput" type="number" min="1" placeholder="Ej: 1" @keyup.enter="searchById" />
+              <button @click="searchById">Buscar</button>
             </div>
-            <span class="item-meta">{{ productLabel(lot.productId) }}</span>
-
-            <template v-if="editingLotId !== lot.lotId">
-              <div class="stats lot-stats">
-                <div class="stat"><span class="stat-label">Entrada</span><span class="stat-value">{{ lot.quantity }} {{ lot.measureUnit }}</span></div>
-                <div class="stat"><span class="stat-label">Stock</span><span class="stat-value">{{ lot.currentStock }}</span></div>
-                <div class="stat"><span class="stat-label">Reservado</span><span class="stat-value">{{ lot.reservedQuantity }}</span></div>
-                <div class="stat"><span class="stat-label">Disponible</span><span class="stat-value">{{ lot.availableQuantity }}</span></div>
-              </div>
-              <span class="item-meta">
-                Caducidad: {{ formatEpochDate(lot.expirationDate) }}
-                · Proveedor: {{ lot.supplierReference || 'N/A' }}
-              </span>
-              <span class="item-meta">Alta: {{ formatEpochDateTime(lot.createdAt) }} · Última modificación: {{ formatEpochDateTime(lot.updatedAt) }}</span>
-              <div class="lot-actions">
-                <RouterLink :to="`/lotes/${lot.lotId}/trazabilidad`">Ver trazabilidad</RouterLink>
-                <button @click="startEdit(lot)" :disabled="busy" class="btn-secondary">Editar</button>
-                <button @click="deleteLot(lot)" :disabled="busy" class="btn-danger">Eliminar</button>
-              </div>
-            </template>
-
-            <form v-else @submit.prevent="saveEdit(lot)" class="edit-form">
-              <div class="form-group">
-                <label :for="`lot-qty-${lot.lotId}`">Cantidad de entrada (*):</label>
-                <input :id="`lot-qty-${lot.lotId}`" v-model="editForm.quantity" type="number" min="0" step="0.0001" required />
-              </div>
-              <div class="form-group">
-                <label :for="`lot-unit-${lot.lotId}`">Unidad medida:</label>
-                <select :id="`lot-unit-${lot.lotId}`" v-model="editForm.measureUnit">
-                  <option v-for="unit in UNITS" :key="unit.value" :value="unit.value">{{ unit.label }}</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label :for="`lot-exp-${lot.lotId}`">Fecha caducidad:</label>
-                <input :id="`lot-exp-${lot.lotId}`" v-model="editForm.expirationDate" type="date" />
-              </div>
-              <div class="form-group">
-                <label :for="`lot-ref-${lot.lotId}`">Referencia albarán / proveedor:</label>
-                <input :id="`lot-ref-${lot.lotId}`" v-model="editForm.supplierReference" type="text" />
-              </div>
-              <p class="item-meta form-wide">
-                La cantidad no puede ser menor que lo ya reservado ({{ lot.reservedQuantity }}) más lo consumido ({{ lot.consumedQuantity }}).
-              </p>
-              <div class="lot-actions form-wide">
-                <button type="submit" :disabled="busy">Guardar</button>
-                <button type="button" @click="cancelEdit" class="btn-secondary">Cancelar</button>
-              </div>
-            </form>
           </div>
-        </div>
-      </section>
+        </section>
+
+        <p v-if="actionSuccess" class="msg-success" role="status">{{ actionSuccess }}</p>
+        <p v-if="actionError" class="msg-error" role="alert">{{ actionError }}</p>
+
+        <section v-if="activeTab === 'registrados' || searchDone" class="panel">
+          <h3>{{ activeTab === 'registrados' ? 'Lotes registrados' : 'Resultado de la búsqueda' }}</h3>
+          <p v-if="loading" class="empty-state">Cargando lotes...</p>
+          <p v-else-if="listError" class="msg-error">{{ listError }}</p>
+          <p v-else-if="lots.length === 0" class="empty-state">
+            {{ activeTab === 'registrados' ? 'No hay lotes con este filtro.' : 'El lote ya no existe.' }}
+          </p>
+          <div v-else class="item-list">
+            <div v-for="lot in lots" :key="lot.lotId" class="item-card">
+              <div class="item-head">
+                <span class="item-title">{{ lot.lotNumber }} <code>#{{ lot.lotId }}</code></span>
+                <span v-if="isExpired(lot.expirationDate)" class="status status-CADUCADO">CADUCADO</span>
+              </div>
+              <span class="item-meta">{{ productLabel(lot.productId) }}</span>
+
+              <template v-if="editingLotId !== lot.lotId">
+                <div class="stats lot-stats">
+                  <div class="stat"><span class="stat-label">Entrada</span><span class="stat-value">{{ lot.quantity }} {{ lot.measureUnit }}</span></div>
+                  <div class="stat"><span class="stat-label">Stock</span><span class="stat-value">{{ lot.currentStock }}</span></div>
+                  <div class="stat"><span class="stat-label">Reservado</span><span class="stat-value">{{ lot.reservedQuantity }}</span></div>
+                  <div class="stat"><span class="stat-label">Disponible</span><span class="stat-value">{{ lot.availableQuantity }}</span></div>
+                </div>
+                <span class="item-meta">
+                  Caducidad: {{ formatEpochDate(lot.expirationDate) }}
+                  · Proveedor: {{ lot.supplierReference || 'N/A' }}
+                </span>
+                <span class="item-meta">Alta: {{ formatEpochDateTime(lot.createdAt) }} · Última modificación: {{ formatEpochDateTime(lot.updatedAt) }}</span>
+                <div class="lot-actions">
+                  <RouterLink :to="`/lotes/${lot.lotId}/trazabilidad`">Ver trazabilidad</RouterLink>
+                  <button @click="startEdit(lot)" :disabled="busy" class="btn-secondary">Editar</button>
+                  <button @click="deleteLot(lot)" :disabled="busy" class="btn-danger">Eliminar</button>
+                </div>
+              </template>
+
+              <form v-else @submit.prevent="saveEdit(lot)" class="edit-form">
+                <div class="form-group">
+                  <label :for="`lot-qty-${lot.lotId}`">Cantidad de entrada (*):</label>
+                  <input :id="`lot-qty-${lot.lotId}`" v-model="editForm.quantity" type="number" min="0" step="0.0001" required />
+                </div>
+                <div class="form-group">
+                  <label :for="`lot-unit-${lot.lotId}`">Unidad medida:</label>
+                  <select :id="`lot-unit-${lot.lotId}`" v-model="editForm.measureUnit">
+                    <option v-for="unit in UNITS" :key="unit.value" :value="unit.value">{{ unit.label }}</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label :for="`lot-exp-${lot.lotId}`">Fecha caducidad:</label>
+                  <input :id="`lot-exp-${lot.lotId}`" v-model="editForm.expirationDate" type="date" />
+                </div>
+                <div class="form-group">
+                  <label :for="`lot-ref-${lot.lotId}`">Referencia albarán / proveedor:</label>
+                  <input :id="`lot-ref-${lot.lotId}`" v-model="editForm.supplierReference" type="text" />
+                </div>
+                <p class="item-meta form-wide">
+                  La cantidad no puede ser menor que lo ya reservado ({{ lot.reservedQuantity }}) más lo consumido ({{ lot.consumedQuantity }}).
+                </p>
+                <div class="lot-actions form-wide">
+                  <button type="submit" :disabled="busy">Guardar</button>
+                  <button type="button" @click="cancelEdit" class="btn-secondary">Cancelar</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </section>
+      </div>
     </div>
   </div>
 </template>
@@ -246,10 +283,6 @@ watch(productFilter, () => {
   align-items: end;
   gap: 14px;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
-}
-
-.show-all {
-  justify-self: start;
 }
 
 .lot-stats {

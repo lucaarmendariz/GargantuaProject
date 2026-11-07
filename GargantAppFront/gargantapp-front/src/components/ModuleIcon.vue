@@ -15,12 +15,6 @@ defineProps({
       <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
       <path d="M12 11h4M12 16h4M8 11h.01M8 16h.01" />
     </template>
-    <!-- Pedidos cerrados: caja de archivo -->
-    <template v-else-if="name === 'pedidos-cerrados'">
-      <rect x="2" y="3" width="20" height="5" rx="1" />
-      <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8" />
-      <path d="M10 12h4" />
-    </template>
     <!-- Inventario: paquete -->
     <template v-else-if="name === 'inventario'">
       <path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z" />

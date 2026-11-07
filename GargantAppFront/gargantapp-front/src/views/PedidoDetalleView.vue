@@ -3,6 +3,8 @@ import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import apiClient from '../api';
 import EventTimeline from '../components/EventTimeline.vue';
+import TabMenu from '../components/TabMenu.vue';
+import { useTabRoute } from '../composables/useTabRoute';
 import { formatEpochDate, formatEpochDateTime, isExpired } from '../utils/date';
 import { errorMessage } from '../utils/errors';
 import { getUser } from '../utils/session';
@@ -30,6 +32,14 @@ const consumption = ref({});
 const order = computed(() => detail.value?.order);
 const isOpen = computed(() => order.value?.status === 'ABIERTO');
 const isPrepared = computed(() => order.value?.status === 'PREPARADO');
+
+// Menú del pedido: una acción por pestaña. Asignar lotes solo en pedidos abiertos y para ADMIN o ENCARGADO.
+const tabs = computed(() => [
+  { id: 'lotes', label: 'Lotes y estado' },
+  ...(isOpen.value && canManage.value ? [{ id: 'asignar', label: 'Asignar lote' }] : []),
+  { id: 'historial', label: 'Historial' },
+]);
+const activeTab = useTabRoute(tabs);
 const isDelivered = computed(() => order.value?.status === 'ENTREGADO');
 const isClosed = computed(() => order.value?.status === 'CERRADO');
 const timelineItems = computed(() => (detail.value?.events || []).map(eventToTimeline));
@@ -109,7 +119,7 @@ const goBack = () => {
   if (window.history.state?.back) {
     router.back();
   } else {
-    router.push(isClosed.value ? '/pedidos/cerrados' : '/pedidos');
+    router.push(isClosed.value ? '/pedidos?tab=cerrados' : '/pedidos');
   }
 };
 
@@ -152,10 +162,12 @@ onMounted(load);
           </dl>
         </section>
 
+        <TabMenu v-model="activeTab" :tabs="tabs" label="Acciones del pedido" />
+
         <p v-if="actionSuccess" class="msg-success" role="status">{{ actionSuccess }}</p>
         <p v-if="actionError" class="msg-error" role="alert">{{ actionError }}</p>
 
-        <section v-if="isOpen && canManage" class="panel">
+        <section v-if="activeTab === 'asignar'" id="panel-asignar" role="tabpanel" aria-labelledby="tab-asignar" class="panel">
           <h3>Asignar lote</h3>
           <form @submit.prevent="addLine" class="line-form">
             <div class="form-group">
@@ -175,7 +187,7 @@ onMounted(load);
           </form>
         </section>
 
-        <section class="panel">
+        <section v-if="activeTab === 'lotes'" id="panel-lotes" role="tabpanel" aria-labelledby="tab-lotes" class="panel">
           <h3>Lotes del pedido</h3>
           <p v-if="detail.lines.length === 0" class="empty-state">Este pedido aún no tiene lotes asignados.</p>
           <div v-else class="item-list">
@@ -201,11 +213,11 @@ onMounted(load);
           </div>
           <p v-else-if="isDelivered && order.autoCloseAt" class="item-meta order-actions">
             Entregado al cliente. Se cerrará automáticamente el {{ formatEpochDateTime(order.autoCloseAt) }}
-            y pasará a <RouterLink to="/pedidos/cerrados">Pedidos cerrados</RouterLink>.
+            y pasará a <RouterLink to="/pedidos?tab=cerrados">Pedidos cerrados</RouterLink>.
           </p>
         </section>
 
-        <section class="panel">
+        <section v-if="activeTab === 'historial'" id="panel-historial" role="tabpanel" aria-labelledby="tab-historial" class="panel">
           <h3>Historial del pedido</h3>
           <EventTimeline class="history" :items="timelineItems" />
         </section>
