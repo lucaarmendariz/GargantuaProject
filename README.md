@@ -117,13 +117,35 @@ El OCR descarga el idioma la primera vez que se usa, así que el móvil necesita
 
    En Windows: `gradlew.bat bootRun`. La API queda disponible en `http://localhost:8080`.
 
-La API exige un token JWT, que se obtiene en `POST /api/auth/login` y caduca a las 8 horas:
+La API exige un token JWT, que se obtiene en `POST /api/auth/login` y caduca a las 8 horas. Los permisos se leen de la base de datos en cada petición: desactivar a un usuario, cambiarle el rol o apagar un módulo surte efecto al momento.
 
-| Rol | Acceso |
-|-----|--------|
-| `ADMIN` | Todo |
-| `ENCARGADO` | Productos, lotes y estado de lotes |
-| `OPERARIO` | Registrar movimientos de producción y consultar el estado de lotes |
+### Módulos contratados y permisos
+
+Cada cliente tiene su propia instalación. Hay cuatro roles:
+
+| Rol | Qué hace |
+|-----|----------|
+| `SUPERADMIN` | El proveedor de la app. En **Plataforma** activa los módulos que el cliente tiene contratados. También entra en Administración para dar soporte. |
+| `ADMIN` | El administrador del cliente. Gestiona todos los módulos contratados y, en **Administración**, decide qué puede hacer cada rol y da de alta, cambia de rol o desactiva a sus usuarios. |
+| `ENCARGADO`, `OPERARIO` | Ven los módulos que les permita el `ADMIN`, con uno de estos niveles: **Sin acceso**, **Ver** (consultar y operar en planta: preparar y entregar pedidos, registrar movimientos) o **Gestionar** (además crear, editar y borrar). |
+
+Módulos: `PEDIDOS`, `INVENTARIO`, `LOTES`, `HISTORIAL` y `PRODUCCION`. Un módulo no contratado no lo ve nadie, ni el `ADMIN`, y la API rechaza cualquier acceso a él. La trazabilidad de un lote la consulta cualquier usuario activo.
+
+Permisos por defecto (los de antes de existir el panel): `ENCARGADO` gestiona Pedidos, Inventario y Lotes; `OPERARIO` ve Pedidos y Producción.
+
+Usuario de prueba del proveedor (solo en la base de datos de desarrollo, `03_seeds.sql`): `superadmin` / `moncorp2026`.
+
+**Activar la cuenta del proveedor en una instalación real.** La migración `004` crea `superadmin` desactivado, porque la contraseña de prueba es pública. Genera el hash de una contraseña propia y actívalo, desde `trazabilidad-api/database`:
+
+```bash
+# Hash BCrypt de la contraseña (htpasswd viene con Apache; también sirve cualquier generador BCrypt)
+htpasswd -nbBC 10 "" 'TU-CONTRASEÑA' | tr -d ':\n' | sed 's/$2y/$2a/'
+set -a; source ./.env; set +a
+docker exec -i -e MYSQL_PWD="$DB_PASSWORD" trazabilidad_db mariadb -utrazabilidad_app traceability_lean \
+  -e "UPDATE app_user SET password_hash='<HASH>', is_active=1 WHERE username='superadmin';"
+```
+
+> `update_db.sh` y `03_seeds.sql` cargan usuarios con contraseñas públicas (`luca`, `superadmin`): úsalos solo en desarrollo.
 
 ### 4. Frontend
 
@@ -156,10 +178,10 @@ Un pedido tiene una fecha programada y una línea por cada lote que usa. Pasa po
 
 `stock = entrada - consumido` y `disponible = stock - reservado`. Un lote cuyo último movimiento manual es `BLOQUEADO` no se puede reservar ni consumir. Los lotes caducados se señalan, pero no se bloquean.
 
-| Rol | Pedidos |
-|-----|---------|
-| `ADMIN`, `ENCARGADO` | Crear, asignar y retirar lotes, preparar, entregar y cancelar |
-| `OPERARIO` | Consultar, preparar y entregar |
+| Permiso en Pedidos | Puede |
+|--------------------|-------|
+| Gestionar | Crear, asignar y retirar lotes, preparar, entregar y cancelar |
+| Ver | Consultar, preparar y entregar |
 
 **Actualizar una base de datos existente sin perder datos**, desde `trazabilidad-api/database`:
 
@@ -168,6 +190,7 @@ set -a; source ./.env; set +a
 docker exec -i -e MYSQL_PWD="$DB_PASSWORD" trazabilidad_db mariadb -utrazabilidad_app traceability_lean < migrations/001_pedidos.sql
 docker exec -i -e MYSQL_PWD="$DB_PASSWORD" trazabilidad_db mariadb -utrazabilidad_app traceability_lean < migrations/002_estados_pedido.sql
 docker exec -i -e MYSQL_PWD="$DB_PASSWORD" trazabilidad_db mariadb -utrazabilidad_app traceability_lean < migrations/003_gtin_producto.sql
+docker exec -i -e MYSQL_PWD="$DB_PASSWORD" trazabilidad_db mariadb -utrazabilidad_app traceability_lean < migrations/004_modulos_permisos.sql
 docker exec -i -e MYSQL_PWD="$DB_PASSWORD" trazabilidad_db mariadb -utrazabilidad_app traceability_lean < 02_procedures.sql
 ```
 
@@ -212,7 +235,7 @@ El proyecto se divide en dos partes independientes:
 ⚠️ COMPLETAR: deja solo lo que **ya está implementado** y mueve el resto a la hoja de ruta.
 
 - [ ] Autenticación y gestión de usuarios
-- [ ] Roles y permisos
+- [x] Roles y permisos (módulos contratados, permisos por rol y gestión de usuarios)
 - [ ] Registro de [entidades principales]
 - [ ] Historial de movimientos / eventos de cada elemento
 - [ ] Búsqueda y filtrado

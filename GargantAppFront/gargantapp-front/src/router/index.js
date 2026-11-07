@@ -8,7 +8,10 @@ import PedidosView from '../views/PedidosView.vue'
 import PedidoDetalleView from '../views/PedidoDetalleView.vue'
 import TrazabilidadLoteView from '../views/TrazabilidadLoteView.vue'
 import LotesView from '../views/LotesView.vue'
-import { getToken, getUser, hasRole } from '../utils/session';
+import AdministracionView from '../views/AdministracionView.vue'
+import PlataformaView from '../views/PlataformaView.vue'
+import { can, getToken, getUser, hasRole } from '../utils/session';
+import { refreshAccess } from '../utils/access';
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -28,25 +31,25 @@ const router = createRouter({
       path: '/inventario', 
       name: 'inventario', 
       component: InventarioView,
-      meta: { requiresAuth: true, roles: ['ADMIN', 'ENCARGADO'] } // Restringido
+      meta: { requiresAuth: true, module: 'INVENTARIO' }
     },
     { 
       path: '/historial-global', 
       name: 'historial', 
       component: HistorialGlobalView,
-      meta: { requiresAuth: true, roles: ['ADMIN'] } // Solo el Administrador supremo
+      meta: { requiresAuth: true, module: 'HISTORIAL' }
     },
     { 
       path: '/produccion', 
       name: 'produccion', 
       component: ProduccionView,
-      meta: { requiresAuth: true, roles: ['ADMIN', 'OPERARIO'] } // Operarios y admin
+      meta: { requiresAuth: true, module: 'PRODUCCION' }
     },
     {
       path: '/pedidos',
       name: 'pedidos',
       component: PedidosView,
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, module: 'PEDIDOS' }
     },
     {
       // Los pedidos cerrados son ahora una pestaña de Pedidos; la ruta antigua sigue funcionando
@@ -58,13 +61,13 @@ const router = createRouter({
       name: 'pedido-detalle',
       component: PedidoDetalleView,
       props: true,
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, module: 'PEDIDOS' }
     },
     {
       path: '/lotes',
       name: 'lotes',
       component: LotesView,
-      meta: { requiresAuth: true, roles: ['ADMIN', 'ENCARGADO'] } // Editar y eliminar lotes
+      meta: { requiresAuth: true, module: 'LOTES' }
     },
     {
       path: '/lotes/:id/trazabilidad',
@@ -72,12 +75,26 @@ const router = createRouter({
       component: TrazabilidadLoteView,
       props: true,
       meta: { requiresAuth: true }
+    },
+    {
+      // Panel del cliente: permisos por rol y usuarios
+      path: '/administracion',
+      name: 'administracion',
+      component: AdministracionView,
+      meta: { requiresAuth: true, roles: ['ADMIN', 'SUPERADMIN'] }
+    },
+    {
+      // Panel del proveedor: módulos contratados
+      path: '/plataforma',
+      name: 'plataforma',
+      component: PlataformaView,
+      meta: { requiresAuth: true, roles: ['SUPERADMIN'] }
     }
   ]
 })
 
 // Guardián de Seguridad Global (Navigation Guard)
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
   // 1. Recuperamos los datos de sesión almacenados al loguearse
   const user = getUser();
 
@@ -87,10 +104,11 @@ router.beforeEach((to) => {
     return { name: 'login' };
   }
 
-  // 3. Comprobar restricciones de Rol (Si la ruta tiene limitaciones)
-  if (to.meta.roles && !hasRole(...to.meta.roles)) {
-    // Si está logueado pero no tiene el rol necesario, le mandamos al Panel Central
-    alert('Acceso denegado: Tu perfil de operario no tiene permisos para esta sección.');
+  // 3. Permisos al día (una vez por carga de la página) y restricciones por rol o por módulo
+  if (to.meta.requiresAuth) await refreshAccess();
+  if ((to.meta.roles && !hasRole(...to.meta.roles)) || (to.meta.module && !can(to.meta.module))) {
+    // Si está logueado pero no tiene permiso, le mandamos al Panel Central
+    alert('Acceso denegado: tu perfil no tiene permiso para esta sección.');
     return { name: 'dashboard' };
   }
 

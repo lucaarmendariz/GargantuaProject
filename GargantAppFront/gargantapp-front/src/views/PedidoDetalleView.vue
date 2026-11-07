@@ -8,7 +8,7 @@ import { useAction } from '../composables/useAction';
 import { useTabRoute } from '../composables/useTabRoute';
 import { formatEpochDate, formatEpochDateTime, isExpired } from '../utils/date';
 import { errorMessage } from '../utils/errors';
-import { hasRole } from '../utils/session';
+import { can } from '../utils/session';
 import { eventToTimeline } from '../utils/timeline';
 
 const props = defineProps({
@@ -16,7 +16,8 @@ const props = defineProps({
 });
 
 const router = useRouter();
-const canManage = computed(() => hasRole('ADMIN', 'ENCARGADO'));
+// Crear, asignar lotes y cancelar: permiso GESTIONAR en Pedidos
+const canManage = computed(() => can('PEDIDOS', 'GESTIONAR'));
 
 const detail = ref(null);
 const loadError = ref('');

@@ -8,6 +8,8 @@ export const DEFAULT_LAYOUT = [
   'lotes',
   'historial',
   'produccion',
+  'administracion',
+  'plataforma',
 ];
 
 const storageKey = (username) => `dashboardLayout:${username}`;

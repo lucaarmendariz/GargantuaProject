@@ -10,6 +10,8 @@ DROP TABLE IF EXISTS customer_order;
 DROP TABLE IF EXISTS product_lot;
 DROP TABLE IF EXISTS product;
 DROP TABLE IF EXISTS app_user;
+DROP TABLE IF EXISTS role_permission;
+DROP TABLE IF EXISTS app_module;
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- =================================================================
@@ -85,9 +87,27 @@ CREATE TABLE app_user (
           username VARCHAR(50) UNIQUE NOT NULL,
           password_hash VARCHAR(255) NOT NULL, -- Guardaremos las contraseñas cifradas
           name VARCHAR(100) NOT NULL,
-          role VARCHAR(50) NOT NULL DEFAULT 'OPERARIO', -- OPERARIO, ENCARGADO, ADMIN
+          role VARCHAR(50) NOT NULL DEFAULT 'OPERARIO', -- OPERARIO, ENCARGADO, ADMIN (del cliente), SUPERADMIN (proveedor de la app)
           is_active TINYINT(1) DEFAULT 1 NOT NULL,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+-- Modulos de la app. El SUPERADMIN activa los que el cliente tiene contratados.
+CREATE TABLE app_module (
+          module_code VARCHAR(30) PRIMARY KEY, -- PEDIDOS, INVENTARIO, LOTES, HISTORIAL, PRODUCCION
+          name VARCHAR(100) NOT NULL,
+          sort_order INT NOT NULL DEFAULT 0,
+          is_enabled TINYINT(1) NOT NULL DEFAULT 1
+) ENGINE=InnoDB;
+
+-- Que puede hacer cada rol en cada modulo. Lo decide el ADMIN del cliente.
+-- ADMIN y SUPERADMIN no tienen filas: gestionan todos los modulos activos.
+CREATE TABLE role_permission (
+          role VARCHAR(50) NOT NULL, -- ENCARGADO, OPERARIO
+          module_code VARCHAR(30) NOT NULL,
+          access VARCHAR(20) NOT NULL DEFAULT 'NINGUNO', -- NINGUNO, VER (consultar y operar en planta), GESTIONAR (ademas crear, editar y borrar)
+          PRIMARY KEY (role, module_code),
+          CONSTRAINT fk_permission_module FOREIGN KEY (module_code) REFERENCES app_module (module_code)
 ) ENGINE=InnoDB;
 
 

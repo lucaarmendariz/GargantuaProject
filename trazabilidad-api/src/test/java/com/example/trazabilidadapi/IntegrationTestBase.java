@@ -5,6 +5,7 @@ import com.example.trazabilidadapi.services.JwtService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
@@ -46,8 +47,15 @@ abstract class IntegrationTestBase {
     @Autowired
     private JwtService jwtService;
 
+    @Autowired
+    protected JdbcTemplate jdbc;
+
+    // La API comprueba en la BD que el usuario existe y esta activo: cada rol tiene su usuario de prueba
     protected String bearer(String role) {
-        AppUser user = AppUser.builder().username("test").name("Usuario Test").role(role).build();
+        String username = "test_" + role.toLowerCase();
+        jdbc.update("INSERT IGNORE INTO app_user (username, password_hash, name, role) VALUES (?, 'x', 'Usuario Test', ?)",
+                username, role);
+        AppUser user = AppUser.builder().username(username).name("Usuario Test").role(role).build();
         return "Bearer " + jwtService.issueToken(user);
     }
 }

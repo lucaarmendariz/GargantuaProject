@@ -2,7 +2,7 @@
 import { ref, onMounted, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import apiClient from '../api';
-import { clearSession, getUser } from '../utils/session';
+import { can, clearSession, getUser, hasRole } from '../utils/session';
 import { dayRange, formatDayLong, formatEpochDate, formatEpochDateTime, isExpired } from '../utils/date';
 import { errorMessage } from '../utils/errors';
 import { loadLayout, moveItem, resetLayout, saveLayout } from '../utils/dashboardLayout';
@@ -11,14 +11,20 @@ import CameraScanner from '../components/CameraScanner.vue';
 import { parseLabel } from '../utils/labelParser';
 
 // Accesos del panel. El calendario es otro bloque más y también se puede mover.
+// Cada módulo se ve si el usuario tiene acceso (module) o el rol indicado (roles, para los paneles).
 const MODULES = {
-  pedidos: { label: 'Pedidos', path: '/pedidos' },
-  inventario: { label: 'Inventario Stock', path: '/inventario' },
-  lotes: { label: 'Gestión de Lotes', path: '/lotes' },
-  historial: { label: 'Historial Visibilizar', path: '/historial-global' },
-  produccion: { label: 'Producción Planta', path: '/produccion' },
+  pedidos: { label: 'Pedidos', path: '/pedidos', module: 'PEDIDOS' },
+  inventario: { label: 'Inventario Stock', path: '/inventario', module: 'INVENTARIO' },
+  lotes: { label: 'Gestión de Lotes', path: '/lotes', module: 'LOTES' },
+  historial: { label: 'Historial Visibilizar', path: '/historial-global', module: 'HISTORIAL' },
+  produccion: { label: 'Producción Planta', path: '/produccion', module: 'PRODUCCION' },
+  administracion: { label: 'Administración', path: '/administracion', roles: ['ADMIN', 'SUPERADMIN'] },
+  plataforma: { label: 'Plataforma', path: '/plataforma', roles: ['SUPERADMIN'] },
 };
 const blockLabel = (id) => (id === 'calendario' ? 'Calendario' : MODULES[id].label);
+const isVisible = (id) => id === 'calendario'
+  || (MODULES[id].module ? can(MODULES[id].module) : hasRole(...MODULES[id].roles));
+const seesOrders = can('PEDIDOS');
 
 // El guardián del router ya garantiza que hay sesión
 const user = getUser();
@@ -38,7 +44,7 @@ const months = [
 
 // --- ORDEN PERSONALIZABLE DE LOS BLOQUES ---
 const layoutOwner = () => user?.username || user?.name || 'anonimo';
-const layout = ref(loadLayout(layoutOwner()));
+const layout = ref(loadLayout(layoutOwner()).filter(isVisible));
 const editingLayout = ref(false);
 const dragIndex = ref(null);
 const dropIndex = ref(null);
@@ -78,7 +84,7 @@ const onDragEnd = () => {
 };
 
 const restoreLayout = () => {
-  layout.value = resetLayout(layoutOwner());
+  layout.value = resetLayout(layoutOwner()).filter(isVisible);
   layoutStatus.value = 'Orden original restablecido.';
 };
 
@@ -189,8 +195,11 @@ const loadDay = async () => {
   }
 };
 
-onMounted(loadDay);
-watch(selectedDate, loadDay);
+// Sin acceso a Pedidos no se piden los del día (la API respondería 403)
+if (seesOrders) {
+  onMounted(loadDay);
+  watch(selectedDate, loadDay);
+}
 
 // --- RESTO DE FUNCIONES ---
 const searchLot = async () => {
@@ -313,7 +322,7 @@ const logout = () => {
         </div>
       </section>
 
-      <section class="panel day-section">
+      <section v-if="seesOrders" class="panel day-section">
         <h3>Pedidos del {{ selectedDayLabel }}</h3>
         <p v-if="dayLoading" class="empty-state">Cargando pedidos...</p>
         <p v-else-if="dayError" class="msg-error">{{ dayError }}</p>
@@ -329,7 +338,7 @@ const logout = () => {
         </div>
       </section>
 
-      <section v-if="!dayError" class="panel day-section">
+      <section v-if="seesOrders && !dayError" class="panel day-section">
         <h3>Productos en uso</h3>
         <p class="item-meta section-help">Lotes reservados en los pedidos abiertos de este día.</p>
         <p v-if="dayLoading" class="empty-state">Cargando productos...</p>
