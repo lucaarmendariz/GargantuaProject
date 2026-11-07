@@ -41,3 +41,11 @@ dependencies {
 tasks.named('test') {
     useJUnitPlatform()
 }
+
+// ./gradlew bootRun es para desarrollo: usa el perfil dev (reinicia la base de datos con los
+// datos de prueba) salvo que se indique otro con SPRING_PROFILES_ACTIVE.
+tasks.named('bootRun') {
+    if (!System.getenv('SPRING_PROFILES_ACTIVE')) {
+        systemProperty 'spring.profiles.active', 'dev'
+    }
+}
