@@ -205,9 +205,18 @@ gunzip -c copias/gargantapp-AAAAMMDD-HHMM.sql.gz | docker compose exec -T -e MYS
 
 ```bash
 cd GargantuaProject && git pull
-# Si la versión trae migraciones nuevas (trazabilidad-api/database/migrations), aplícalas antes
-cd produccion && ./instalar.sh
+cd produccion && ./backup.sh
+# La API vieja no puede funcionar con la base de datos nueva: se para mientras se migra
+docker compose stop api
+set -a && source ./.env && set +a
+# Solo las migraciones nuevas que este cliente aún no tenga (p. ej. 005 y 006), en orden, y siempre 02_procedures.sql al final
+for f in migrations/005_perfil_usuario.sql migrations/006_operario_usuario.sql 02_procedures.sql; do
+  docker compose exec -T -e MYSQL_PWD="$DB_ROOT_PASSWORD" db mariadb -uroot traceability_lean < ../trazabilidad-api/database/$f
+done
+./instalar.sh
 ```
+
+Si algo sale mal, restaura la copia que acaba de hacer `backup.sh` (ver «Copias de seguridad»).
 
 **Probar la instalación en tu equipo** (con el entorno de desarrollo arrancado, en otros puertos): `DOMINIO=:80` en `produccion/.env` y `PUERTO_HTTP=8088 ./instalar.sh`; la app queda en `http://localhost:8088`.
 
