@@ -8,9 +8,12 @@ import com.example.trazabilidadapi.models.UpdateUserRequest;
 import com.example.trazabilidadapi.models.UserSummary;
 import com.example.trazabilidadapi.repositories.AccessRepository;
 import com.example.trazabilidadapi.repositories.AccessRepository.AccessRow;
+import com.example.trazabilidadapi.models.AppUser;
+import com.example.trazabilidadapi.repositories.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Set;
 
@@ -28,11 +31,31 @@ public class AccessService {
     private static final int MIN_PASSWORD = 8;
 
     private final AccessRepository repository;
+    private final UserRepository users;
     private final PasswordEncoder passwordEncoder;
 
-    public AccessService(AccessRepository repository, PasswordEncoder passwordEncoder) {
+    public AccessService(AccessRepository repository, UserRepository users, PasswordEncoder passwordEncoder) {
         this.repository = repository;
+        this.users = users;
         this.passwordEncoder = passwordEncoder;
+    }
+
+    /** El propio usuario cambia su contraseña: tiene que saber la actual. */
+    public void changePassword(String username, String current, String newPassword) {
+        AppUser user = users.findByUsername(username);
+        if (user == null || current == null || !passwordEncoder.matches(current, user.getPasswordHash())) {
+            throw new IllegalArgumentException("La contraseña actual no es correcta.");
+        }
+        checkPassword(newPassword);
+        repository.setPassword(username, passwordEncoder.encode(newPassword));
+    }
+
+    // BCrypt solo tiene en cuenta los primeros 72 bytes: una contraseña mas larga no seria la que se cree
+    private static void checkPassword(String password) {
+        if (password == null || password.length() < MIN_PASSWORD
+                || password.getBytes(StandardCharsets.UTF_8).length > 72) {
+            throw new IllegalArgumentException("La contraseña debe tener al menos " + MIN_PASSWORD + " caracteres (y como mucho 72).");
+        }
     }
 
     /** Acceso de un usuario activo. null si no existe o esta desactivado. */
@@ -91,9 +114,7 @@ public class AccessService {
         if (username.length() > 50 || name.length() > 100) {
             throw new IllegalArgumentException("El usuario admite 50 caracteres y el nombre 100.");
         }
-        if (request.password() == null || request.password().length() < MIN_PASSWORD) {
-            throw new IllegalArgumentException("La contraseña debe tener al menos " + MIN_PASSWORD + " caracteres.");
-        }
+        checkPassword(request.password());
         return repository.createUser(username, passwordEncoder.encode(request.password()), name, request.role());
     }
 

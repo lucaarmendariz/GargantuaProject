@@ -1,0 +1,56 @@
+# Instalacion de un cliente: base de datos, API y web (Caddy con HTTPS).
+# Se arranca con ./instalar.sh (la primera vez) o: docker compose up -d --build
+# La configuracion de este cliente esta en produccion/.env (copia de .env.example).
+name: gargantapp-produccion
+
+services:
+  db:
+    image: mariadb:11.4
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Falta produccion/.env}
+      MARIADB_DATABASE: traceability_lean
+      MARIADB_USER: trazabilidad_app
+      MARIADB_PASSWORD: ${DB_PASSWORD:?Falta produccion/.env}
+    volumes:
+      - db_data:/var/lib/mysql
+      # Solo la primera vez (volumen vacio): esquema, modulos, permisos por defecto y procedimientos.
+      # Sin datos de prueba ni usuarios: instalar.sh crea los del cliente.
+      - ../trazabilidad-api/database/01_schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+      - ../trazabilidad-api/database/02_procedures.sql:/docker-entrypoint-initdb.d/02_procedures.sql:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      retries: 30
+
+  api:
+    build: ../trazabilidad-api
+    restart: unless-stopped
+    environment:
+      # Sin el perfil dev: nunca reinicia la base de datos
+      SPRING_DATASOURCE_URL: jdbc:mariadb://db:3306/traceability_lean
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET:?Falta produccion/.env}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build: ../GargantAppFront/gargantapp-front
+    restart: unless-stopped
+    environment:
+      DOMINIO: ${DOMINIO:?Falta produccion/.env}
+    ports:
+      - "${PUERTO_HTTP:-80}:80"
+      - "${PUERTO_HTTPS:-443}:443"
+    volumes:
+      # Certificados HTTPS: si se pierden, Caddy los vuelve a pedir
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+
+volumes:
+  db_data:
+  caddy_data:
+  caddy_config:

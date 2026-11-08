@@ -243,6 +243,7 @@ const logout = () => {
       </div>
       <div class="user-badge">
         <strong>{{ user.name }}</strong>
+        <button @click="router.push('/cuenta')" class="btn-logout">Mi contraseña</button>
         <button @click="logout" class="btn-logout">Salir</button>
       </div>
     </header>

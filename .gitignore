@@ -2,3 +2,4 @@
 .env
 # Capturas y registros de Playwright
 .playwright-mcp/
+produccion/copias/

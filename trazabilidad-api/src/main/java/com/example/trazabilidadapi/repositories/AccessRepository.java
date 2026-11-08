@@ -70,6 +70,10 @@ public class AccessRepository {
         }));
     }
 
+    public void setPassword(String username, String passwordHash) {
+        run(() -> jdbcTemplate.update("CALL AppUser_SetPassword(?, ?)", username, passwordHash));
+    }
+
     public void updateUser(int userId, String role, boolean active) {
         run(() -> jdbcTemplate.update("CALL AppUser_Update(?, ?, ?)", userId, role, active));
     }

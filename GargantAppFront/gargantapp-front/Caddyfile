@@ -1,0 +1,21 @@
+# DOMINIO (en produccion/.env):
+#   trazabilidad.cliente.com -> HTTPS con certificado de Let's Encrypt (puertos 80 y 443 abiertos a internet)
+#   192.168.1.50             -> HTTPS con la CA propia de Caddy (red de la planta, sin internet)
+#   :80                      -> solo HTTP, para probar en local
+{$DOMINIO} {
+	encode gzip
+
+	handle /api/* {
+		# Para el navegador /api es el mismo sitio que la app: sin el Origin la API no aplica CORS
+		reverse_proxy api:8080 {
+			header_up -Origin
+		}
+	}
+
+	# La app es una SPA: cualquier ruta que no sea un fichero se sirve con index.html
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}

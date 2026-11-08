@@ -6,6 +6,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -136,6 +137,34 @@ class AccessApiTest extends IntegrationTestBase {
         mvc.perform(as("ADMIN", put("/api/admin/usuarios/" + id)).content("{\"active\":false}")).andExpect(status().isNoContent());
         mvc.perform(withToken(token, get("/api/pedidos"))).andExpect(status().isForbidden());
         mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content(login)).andExpect(status().isUnauthorized());
+    }
+
+    private String login(String username, String password) throws Exception {
+        return mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"" + username + "\",\"password\":\"" + password + "\"}"))
+                .andReturn().getResponse().getContentAsString();
+    }
+
+    @Test
+    void eachUserChangesHisOwnPassword() throws Exception {
+        mvc.perform(as("ADMIN", post("/api/admin/usuarios"))
+                        .content("{\"username\":\"cambia_clave\",\"name\":\"Cambia Clave\",\"role\":\"OPERARIO\",\"password\":\"inicial-123\"}"))
+                .andExpect(status().isCreated());
+        String token = "Bearer " + JsonPath.read(login("cambia_clave", "inicial-123"), "$.token");
+        String change = "{\"actual\":\"%s\",\"nueva\":\"%s\"}";
+
+        mvc.perform(withToken(token, put("/api/me/password")).content(change.formatted("equivocada", "nueva-clave-1")))
+                .andExpect(status().isBadRequest());
+        mvc.perform(withToken(token, put("/api/me/password")).content(change.formatted("inicial-123", "corta")))
+                .andExpect(status().isBadRequest());
+        mvc.perform(withToken(token, put("/api/me/password")).content(change.formatted("inicial-123", "nueva-clave-1")))
+                .andExpect(status().isNoContent());
+
+        // Solo vale la nueva
+        mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"cambia_clave\",\"password\":\"inicial-123\"}"))
+                .andExpect(status().isUnauthorized());
+        assertThat(login("cambia_clave", "nueva-clave-1")).contains("\"token\"");
     }
 
     @Test

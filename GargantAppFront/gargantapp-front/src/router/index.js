@@ -10,6 +10,7 @@ import TrazabilidadLoteView from '../views/TrazabilidadLoteView.vue'
 import LotesView from '../views/LotesView.vue'
 import AdministracionView from '../views/AdministracionView.vue'
 import PlataformaView from '../views/PlataformaView.vue'
+import CuentaView from '../views/CuentaView.vue'
 import { can, getToken, getUser, hasRole } from '../utils/session';
 import { refreshAccess } from '../utils/access';
 
@@ -89,6 +90,13 @@ const router = createRouter({
       name: 'plataforma',
       component: PlataformaView,
       meta: { requiresAuth: true, roles: ['SUPERADMIN'] }
+    },
+    {
+      // Cualquier usuario cambia su propia contraseña
+      path: '/cuenta',
+      name: 'cuenta',
+      component: CuentaView,
+      meta: { requiresAuth: true }
     }
   ]
 })
