@@ -26,11 +26,12 @@ echo "================================================="
 
 # 1. Parar contenedor y BORRAR el volumen de datos (Evita duplicados)
 echo "🧹 Eliminando contenedor y base de datos antigua..."
-docker compose down -v
+docker compose -f ../../docker-compose.yml rm -sf db
+docker volume rm -f gargantapp-dev_db_data >/dev/null
 
 # 2. Levantar Docker desde cero (Limpio de fábrica)
 echo "🐳 Creando contenedor MariaDB nuevo..."
-docker compose up -d
+docker compose -f ../../docker-compose.yml up -d db
 
 # 3. Esperar a MariaDB (Entramos como root/root que viene por defecto)
 echo "⏳ Esperando a que MariaDB inicie sus servicios..."
