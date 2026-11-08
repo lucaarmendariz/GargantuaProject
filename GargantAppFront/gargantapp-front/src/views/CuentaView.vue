@@ -5,6 +5,7 @@ import apiClient from '../api';
 import TabMenu from '../components/TabMenu.vue';
 import UserAvatar from '../components/UserAvatar.vue';
 import { useTabRoute } from '../composables/useTabRoute';
+import { setAvatar } from '../utils/avatars';
 import { formatEpochDate } from '../utils/date';
 import { errorMessage } from '../utils/errors';
 import { resizeToSquare } from '../utils/image';
@@ -64,8 +65,9 @@ const saveData = async () => {
     const { perfil, token } = await apiClient.put('/me/perfil', { name: name.value, avatar: avatar.value });
     profile.value = perfil;
     name.value = perfil.name;
-    // El token nuevo lleva el nombre nuevo, que es el que firma pedidos y movimientos
+    // El token nuevo lleva el nombre nuevo, que es el que sale en la cabecera
     saveSession({ ...getUser(), name: perfil.name, token });
+    setAvatar(perfil.username, perfil.avatar);
     dataSuccess.value = 'Datos guardados.';
   } catch (e) {
     dataError.value = await errorMessage(e, 'No se pudieron guardar tus datos.');

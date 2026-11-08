@@ -1,4 +1,7 @@
 <script setup>
+import UserAvatar from './UserAvatar.vue';
+import { avatarOf } from '../utils/avatars';
+
 defineProps({
   items: { type: Array, required: true }
 });
@@ -14,6 +17,10 @@ defineProps({
           <span class="action-time">{{ item.time }}</span>
         </div>
         <div class="timeline-body">
+          <p v-if="item.person?.name" class="person">
+            <UserAvatar :src="avatarOf(item.person.username)" :name="item.person.name" :size="32" />
+            <span><strong>Operario:</strong> {{ item.person.name }}</span>
+          </p>
           <p v-for="row in item.rows" :key="row.label"><strong>{{ row.label }}:</strong> {{ row.value }}</p>
           <div v-if="item.code" class="ocr-dump">
             <code>{{ item.code }}</code>
@@ -92,6 +99,13 @@ defineProps({
   margin: 4px 0;
   font-size: 0.925rem;
   overflow-wrap: anywhere;
+}
+
+.timeline-body .person {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
 }
 
 .timeline-body strong {

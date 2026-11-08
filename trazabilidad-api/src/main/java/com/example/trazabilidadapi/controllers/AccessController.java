@@ -16,6 +16,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -46,7 +47,13 @@ public class AccessController {
         return service.getProfile(jwt.getSubject());
     }
 
-    /** Perfil guardado y un token nuevo: el nombre va en el token y firma pedidos y movimientos. */
+    /** Foto de quien firma un movimiento de la trazabilidad (la ve cualquier usuario que haya entrado). */
+    @GetMapping("/usuarios/{username}/foto")
+    public Map<String, String> avatar(@PathVariable String username) {
+        return Collections.singletonMap("avatar", service.getAvatar(username));
+    }
+
+    /** Perfil guardado y un token nuevo, que lleva el nombre que se ve en la cabecera. */
     public record SavedProfile(UserProfile perfil, String token) {
     }
 

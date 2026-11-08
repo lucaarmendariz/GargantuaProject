@@ -51,6 +51,10 @@ public class AccessService {
         return repository.getProfile(username);
     }
 
+    public String getAvatar(String username) {
+        return repository.getAvatar(username);
+    }
+
     /** El propio usuario cambia su nombre y su foto (avatar null = quitar la foto). */
     public UserProfile updateProfile(String username, String name, String avatar) {
         String trimmed = name == null ? "" : name.trim();

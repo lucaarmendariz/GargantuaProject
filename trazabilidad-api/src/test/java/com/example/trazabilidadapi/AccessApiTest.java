@@ -186,10 +186,20 @@ class AccessApiTest extends IntegrationTestBase {
                 .andExpect(jsonPath("$.perfil.avatar").value(photo))
                 .andReturn().getResponse().getContentAsString();
 
-        // El token nuevo lleva el nombre nuevo: es el que firma pedidos y movimientos
+        // El token nuevo lleva el nombre nuevo, que es el que sale en la cabecera
         String newToken = JsonPath.read(saved, "$.token");
         String payload = new String(java.util.Base64.getUrlDecoder().decode(newToken.split("\\.")[1]));
         assertThat(payload).contains("\"name\":\"Despues\"");
+
+        // Sus movimientos llevan su usuario (para la foto) y el nombre que tiene en la BD al hacerlos
+        mvc.perform(withToken(token, post("/api/historial/escanear"))
+                        .content("{\"lotId\":1,\"actionType\":\"EN_PRODUCCION\",\"quantityAffected\":1}"))
+                .andExpect(status().isCreated());
+        mvc.perform(as("ADMIN", get("/api/historial/lote/1")))
+                .andExpect(jsonPath("$[?(@.operatorUsername == 'con_foto' && @.operator == 'Despues')]").exists());
+        mvc.perform(as("OPERARIO", get("/api/usuarios/con_foto/foto")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.avatar").value(photo));
 
         // Quitar la foto
         mvc.perform(withToken(token, put("/api/me/perfil")).content("{\"name\":\"Despues\",\"avatar\":null}"))

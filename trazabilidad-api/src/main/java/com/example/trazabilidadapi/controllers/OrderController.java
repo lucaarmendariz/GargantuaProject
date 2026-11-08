@@ -94,6 +94,6 @@ public class OrderController {
     }
 
     private String operator(Jwt jwt) {
-        return jwt.getClaimAsString("name");
+        return jwt.getSubject();
     }
 }

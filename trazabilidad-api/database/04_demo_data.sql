@@ -137,43 +137,43 @@ demo: BEGIN
     -- PEDIDOS
     -- -------------------------------------------------------------
     -- Hoy, abierto: materias primas para producir
-    CALL Order_Create('PED-DEMO-001', 'Bar Txoko Zaharra', v_today, 'Entregar antes de las 11:00', 'Ane Etxeberria', o1);
-    CALL OrderLine_Add(o1, l_hue_a, 120, 'Ane Etxeberria', ln_a);
-    CALL OrderLine_Add(o1, l_pat_a, 80, 'Ane Etxeberria', ln_a);
-    CALL OrderLine_Add(o1, l_ceb_a, 20, 'Ane Etxeberria', ln_a);
-    CALL OrderLine_Add(o1, l_ace_a, 15, 'Ane Etxeberria', ln_a);
+    CALL Order_Create('PED-DEMO-001', 'Bar Txoko Zaharra', v_today, 'Entregar antes de las 11:00', 'ane', o1);
+    CALL OrderLine_Add(o1, l_hue_a, 120, 'ane', ln_a);
+    CALL OrderLine_Add(o1, l_pat_a, 80, 'ane', ln_a);
+    CALL OrderLine_Add(o1, l_ceb_a, 20, 'ane', ln_a);
+    CALL OrderLine_Add(o1, l_ace_a, 15, 'ane', ln_a);
 
     -- Hoy, abierto: producto terminado
-    CALL Order_Create('PED-DEMO-002', 'Comedor Escolar Ikastola', v_today, NULL, 'Luca Armendariz', o2);
-    CALL OrderLine_Add(o2, l_torc_a, 30, 'Luca Armendariz', ln_a);
-    CALL OrderLine_Add(o2, l_tors_a, 20, 'Luca Armendariz', ln_a);
-    CALL OrderLine_Add(o2, l_caj_a, 50, 'Luca Armendariz', ln_a);
+    CALL Order_Create('PED-DEMO-002', 'Comedor Escolar Ikastola', v_today, NULL, 'luca', o2);
+    CALL OrderLine_Add(o2, l_torc_a, 30, 'luca', ln_a);
+    CALL OrderLine_Add(o2, l_tors_a, 20, 'luca', ln_a);
+    CALL OrderLine_Add(o2, l_caj_a, 50, 'luca', ln_a);
 
     -- Mañana, abierto: usa el lote de huevos que caduca pronto
-    CALL Order_Create('PED-DEMO-003', 'Catering Itsasoa', v_today + d, 'Evento de 120 personas', 'Ane Etxeberria', o3);
-    CALL OrderLine_Add(o3, l_hue_b, 100, 'Ane Etxeberria', ln_a);
-    CALL OrderLine_Add(o3, l_sal_a, 2, 'Ane Etxeberria', ln_a);
+    CALL Order_Create('PED-DEMO-003', 'Catering Itsasoa', v_today + d, 'Evento de 120 personas', 'ane', o3);
+    CALL OrderLine_Add(o3, l_hue_b, 100, 'ane', ln_a);
+    CALL OrderLine_Add(o3, l_sal_a, 2, 'ane', ln_a);
 
     -- Hace cuatro días, ya cerrado: preparado (con consumo distinto de lo reservado),
     -- entregado hace 3 días y cerrado automáticamente a las 48 h
-    CALL Order_Create('PED-DEMO-004', 'Restaurante Arrantzale', v_today - 4 * d, NULL, 'Ane Etxeberria', o4);
-    CALL OrderLine_Add(o4, l_hue_a, 90, 'Ane Etxeberria', ln_a);
-    CALL OrderLine_Add(o4, l_pat_a, 60, 'Ane Etxeberria', ln_b);
-    CALL OrderLine_Consume(o4, ln_a, 96, 'Mikel Goñi');
-    CALL OrderLine_Consume(o4, ln_b, 55, 'Mikel Goñi');
-    CALL Order_Prepare(o4, 'Mikel Goñi');
-    CALL Order_Deliver(o4, 'Mikel Goñi');
+    CALL Order_Create('PED-DEMO-004', 'Restaurante Arrantzale', v_today - 4 * d, NULL, 'ane', o4);
+    CALL OrderLine_Add(o4, l_hue_a, 90, 'ane', ln_a);
+    CALL OrderLine_Add(o4, l_pat_a, 60, 'ane', ln_b);
+    CALL OrderLine_Consume(o4, ln_a, 96, 'mikel');
+    CALL OrderLine_Consume(o4, ln_b, 55, 'mikel');
+    CALL Order_Prepare(o4, 'mikel');
+    CALL Order_Deliver(o4, 'mikel');
     UPDATE customer_order SET prepared_at = NOW() - INTERVAL 4 DAY, delivered_at = NOW() - INTERVAL 3 DAY WHERE order_id = o4;
     UPDATE order_event SET event_timestamp = NOW() - INTERVAL 3 DAY WHERE order_id = o4 AND event_type = 'ENTREGADO';
     UPDATE order_event SET event_timestamp = NOW() - INTERVAL 4 DAY WHERE order_id = o4 AND event_type <> 'ENTREGADO';
 
     -- Hace dos días, cancelado: se liberó lo reservado
-    CALL Order_Create('PED-DEMO-005', 'Sociedad Gastronómica Lagunak', v_today - 2 * d, 'El cliente anuló la cena', 'Luca Armendariz', o5);
-    CALL OrderLine_Add(o5, l_torc_a, 15, 'Luca Armendariz', ln_a);
-    CALL Order_Cancel(o5, 'Luca Armendariz');
+    CALL Order_Create('PED-DEMO-005', 'Sociedad Gastronómica Lagunak', v_today - 2 * d, 'El cliente anuló la cena', 'luca', o5);
+    CALL OrderLine_Add(o5, l_torc_a, 15, 'luca', ln_a);
+    CALL Order_Cancel(o5, 'luca');
 
     -- Próxima semana, abierto y todavía sin lotes
-    CALL Order_Create('PED-DEMO-006', 'Hotel Gargantua', v_today + 7 * d, 'Pendiente de confirmar cantidades', 'Ane Etxeberria', o6);
+    CALL Order_Create('PED-DEMO-006', 'Hotel Gargantua', v_today + 7 * d, 'Pendiente de confirmar cantidades', 'ane', o6);
     END catalogo;
 
     -- =============================================================
@@ -193,33 +193,33 @@ demo: BEGIN
     SELECT lot_id INTO l_sal_a FROM product_lot WHERE lot_number = 'LOT-SAL-2609-A';
 
     -- Hoy, PREPARADO: listo para salir hacia el cliente
-    CALL Order_Create('PED-DEMO-007', 'Asador Mendibil', v_today, 'Recogen en planta a las 13:00', 'Ane Etxeberria', o7);
-    CALL OrderLine_Add(o7, l_hue_a, 36, 'Ane Etxeberria', ln_a);
-    CALL OrderLine_Add(o7, l_ceb_a, 6, 'Ane Etxeberria', ln_b);
-    CALL OrderLine_Consume(o7, ln_a, 36, 'Mikel Goñi');
-    CALL OrderLine_Consume(o7, ln_b, 5.5, 'Mikel Goñi');
-    CALL Order_Prepare(o7, 'Mikel Goñi');
+    CALL Order_Create('PED-DEMO-007', 'Asador Mendibil', v_today, 'Recogen en planta a las 13:00', 'ane', o7);
+    CALL OrderLine_Add(o7, l_hue_a, 36, 'ane', ln_a);
+    CALL OrderLine_Add(o7, l_ceb_a, 6, 'ane', ln_b);
+    CALL OrderLine_Consume(o7, ln_a, 36, 'mikel');
+    CALL OrderLine_Consume(o7, ln_b, 5.5, 'mikel');
+    CALL Order_Prepare(o7, 'mikel');
 
     -- Ayer, ENTREGADO hace 20 horas: se cerrara solo dentro de 28 horas
-    CALL Order_Create('PED-DEMO-008', 'Cafetería Bidebarrieta', v_today - d, NULL, 'Luca Armendariz', o8);
-    CALL OrderLine_Add(o8, l_tors_a, 12, 'Luca Armendariz', ln_a);
-    CALL OrderLine_Add(o8, l_caj_a, 12, 'Luca Armendariz', ln_b);
-    CALL OrderLine_Consume(o8, ln_a, 12, 'Mikel Goñi');
-    CALL OrderLine_Consume(o8, ln_b, 12, 'Mikel Goñi');
-    CALL Order_Prepare(o8, 'Mikel Goñi');
-    CALL Order_Deliver(o8, 'Mikel Goñi');
+    CALL Order_Create('PED-DEMO-008', 'Cafetería Bidebarrieta', v_today - d, NULL, 'luca', o8);
+    CALL OrderLine_Add(o8, l_tors_a, 12, 'luca', ln_a);
+    CALL OrderLine_Add(o8, l_caj_a, 12, 'luca', ln_b);
+    CALL OrderLine_Consume(o8, ln_a, 12, 'mikel');
+    CALL OrderLine_Consume(o8, ln_b, 12, 'mikel');
+    CALL Order_Prepare(o8, 'mikel');
+    CALL Order_Deliver(o8, 'mikel');
     UPDATE customer_order SET prepared_at = NOW() - INTERVAL 22 HOUR, delivered_at = NOW() - INTERVAL 20 HOUR WHERE order_id = o8;
     UPDATE order_event SET event_timestamp = NOW() - INTERVAL 20 HOUR WHERE order_id = o8 AND event_type = 'ENTREGADO';
     UPDATE order_event SET event_timestamp = NOW() - INTERVAL 22 HOUR WHERE order_id = o8 AND event_type <> 'ENTREGADO';
 
     -- Hace una semana, ya CERRADO: entregado hace 6 dias
-    CALL Order_Create('PED-DEMO-009', 'Pintxos Gure Txokoa', v_today - 7 * d, 'Pedido semanal', 'Ane Etxeberria', o9);
-    CALL OrderLine_Add(o9, l_hue_a, 48, 'Ane Etxeberria', ln_a);
-    CALL OrderLine_Add(o9, l_sal_a, 1, 'Ane Etxeberria', ln_b);
-    CALL OrderLine_Consume(o9, ln_a, 48, 'Mikel Goñi');
-    CALL OrderLine_Consume(o9, ln_b, 0.8, 'Mikel Goñi');
-    CALL Order_Prepare(o9, 'Mikel Goñi');
-    CALL Order_Deliver(o9, 'Mikel Goñi');
+    CALL Order_Create('PED-DEMO-009', 'Pintxos Gure Txokoa', v_today - 7 * d, 'Pedido semanal', 'ane', o9);
+    CALL OrderLine_Add(o9, l_hue_a, 48, 'ane', ln_a);
+    CALL OrderLine_Add(o9, l_sal_a, 1, 'ane', ln_b);
+    CALL OrderLine_Consume(o9, ln_a, 48, 'mikel');
+    CALL OrderLine_Consume(o9, ln_b, 0.8, 'mikel');
+    CALL Order_Prepare(o9, 'mikel');
+    CALL Order_Deliver(o9, 'mikel');
     UPDATE customer_order SET prepared_at = NOW() - INTERVAL 7 DAY, delivered_at = NOW() - INTERVAL 6 DAY WHERE order_id = o9;
     UPDATE order_event SET event_timestamp = NOW() - INTERVAL 6 DAY WHERE order_id = o9 AND event_type = 'ENTREGADO';
     UPDATE order_event SET event_timestamp = NOW() - INTERVAL 7 DAY WHERE order_id = o9 AND event_type <> 'ENTREGADO';
