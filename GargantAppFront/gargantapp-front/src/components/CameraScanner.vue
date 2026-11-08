@@ -24,6 +24,8 @@ const hints = new Map([[DecodeHintType.TRY_HARDER, true]]);
 const reader = new BrowserMultiFormatReader(hints);
 let controls = null;
 let finished = false;
+// El escáner se cerró mientras la cámara aún arrancaba (p. ej. con el aviso de permiso abierto)
+let closed = false;
 
 const finish = (text, source) => {
   if (finished || !text?.trim()) return;
@@ -53,6 +55,10 @@ const startCamera = async () => {
         if (result) finish(result.getText(), 'barcode');
       },
     );
+    if (closed) {
+      stopCamera();
+      return;
+    }
     liveAvailable.value = true;
     status.value = 'Apunta al código de barras o QR de la etiqueta.';
   } catch (e) {
@@ -145,6 +151,7 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+  closed = true;
   window.removeEventListener('keydown', onKeydown);
   stopCamera();
 });

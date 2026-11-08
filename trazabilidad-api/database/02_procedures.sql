@@ -204,14 +204,46 @@ CREATE OR REPLACE PROCEDURE `LotHistory_Insert`(
     OUT _historyId INT
 )
 BEGIN
-    IF (SELECT COUNT(*) FROM product_lot WHERE lot_id = _lotId) = 0 THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Error: No se puede registrar historial para un lote inexistente.', MYSQL_ERRNO = 106;
+    DECLARE v_lot INT DEFAULT NULL;
+    DECLARE v_state VARCHAR(50) DEFAULT NULL;
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_state = NULL;
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    -- El lote queda bloqueado hasta el COMMIT: un bloqueo y otro movimiento a la vez no se cruzan
+    START TRANSACTION;
+    SELECT lot_id INTO v_lot FROM product_lot WHERE lot_id = _lotId FOR UPDATE;
+    IF v_lot IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No existe ningún lote con ese ID.', MYSQL_ERRNO = 106;
+    END IF;
+    IF _actionType IS NULL OR _actionType NOT IN ('RECEPCIONADO', 'EN_PRODUCCION', 'BLOQUEADO', 'VENDIDO', 'DESBLOQUEADO') THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Movimiento no válido.', MYSQL_ERRNO = 125;
+    END IF;
+    IF _quantityAffected < 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La cantidad no puede ser negativa.', MYSQL_ERRNO = 125;
+    END IF;
+
+    -- Estado del lote: su ultimo movimiento manual (los de pedidos no cuentan), como en Lot_AssertUsable
+    SELECT action_type INTO v_state FROM lot_history
+    WHERE lot_id = _lotId AND order_id IS NULL
+    ORDER BY history_id DESC LIMIT 1;
+
+    -- Un bloqueo de calidad solo se levanta desbloqueando a proposito, no con cualquier movimiento
+    IF v_state = 'BLOQUEADO' AND _actionType NOT IN ('BLOQUEADO', 'DESBLOQUEADO') THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'El lote está bloqueado por calidad: hay que desbloquearlo antes de registrar otro movimiento.', MYSQL_ERRNO = 112;
+    END IF;
+    IF _actionType = 'DESBLOQUEADO' AND (v_state IS NULL OR v_state <> 'BLOQUEADO') THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'El lote no está bloqueado.', MYSQL_ERRNO = 125;
     END IF;
 
     INSERT INTO lot_history (lot_id, action_type, operator, quantity_affected, ocr_raw_text, observations)
     VALUES (_lotId, _actionType, _operator, _quantityAffected, _ocrRawText, _observations);
 
     SET _historyId = LAST_INSERT_ID();
+    COMMIT;
 END;;
 
 -- 3.2 READ (BY LOT): Consultar toda la línea de tiempo de un lote (desde su origen)
