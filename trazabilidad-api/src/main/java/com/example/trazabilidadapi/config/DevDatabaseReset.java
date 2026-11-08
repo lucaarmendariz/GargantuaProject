@@ -12,7 +12,8 @@ import org.springframework.stereotype.Component;
 
 import javax.sql.DataSource;
 import java.io.IOException;
-import java.net.URI;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -33,8 +34,8 @@ import java.util.Set;
  *   <li>Mientras la API está en marcha vigila esos scripts y, si alguno cambia, repite el reinicio.</li>
  * </ul>
  *
- * Por seguridad solo actúa contra una base de datos local (localhost, 127.0.0.1 o la del equipo
- * vista desde Docker). Se desactiva con {@code app.dev.reset-db=false}.
+ * Por seguridad solo actúa contra una base de datos local (localhost, 127.0.0.1 o el contenedor
+ * trazabilidad_db del docker-compose de desarrollo). Se desactiva con {@code app.dev.reset-db=false}.
  */
 @Component
 @Profile("dev")
@@ -47,7 +48,7 @@ public class DevDatabaseReset {
             "01_schema.sql", "02_procedures.sql", "03_seeds.sql", "04_demo_data.sql");
 
     private static final Set<String> LOCAL_HOSTS = Set.of(
-            "localhost", "127.0.0.1", "::1", "[::1]", "host.docker.internal");
+            "localhost", "127.0.0.1", "::1", "[::1]", "trazabilidad_db");
 
     private final DataSource dataSource;
     private final Path scriptsDir;
@@ -149,15 +150,12 @@ public class DevDatabaseReset {
         }
     }
 
+    // jdbc:mariadb://HOST:puerto/... -> HOST. Sin java.net.URI: no admite "_" en el host (trazabilidad_db)
+    private static final Pattern JDBC_HOST = Pattern.compile("^jdbc:[a-z]+://(\\[[^\\]]+\\]|[^:/?,]+)");
+
     static String hostOf(String jdbcUrl) {
-        if (jdbcUrl == null || !jdbcUrl.startsWith("jdbc:")) {
-            return null;
-        }
-        try {
-            return URI.create(jdbcUrl.substring(5)).getHost();
-        } catch (IllegalArgumentException e) {
-            return null;
-        }
+        Matcher matcher = JDBC_HOST.matcher(jdbcUrl == null ? "" : jdbcUrl);
+        return matcher.find() ? matcher.group(1) : null;
     }
 
     private static String read(Path path) {

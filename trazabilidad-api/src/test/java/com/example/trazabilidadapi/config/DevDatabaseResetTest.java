@@ -72,8 +72,13 @@ class DevDatabaseResetTest {
     void soloReiniciaBasesDeDatosLocales() {
         DevDatabaseReset.checkIsLocal("jdbc:mariadb://localhost:3307/traceability_lean");
         DevDatabaseReset.checkIsLocal("jdbc:mariadb://127.0.0.1:3307/traceability_lean?useSSL=false");
-        DevDatabaseReset.checkIsLocal("jdbc:mariadb://host.docker.internal:3307/traceability_lean");
+        DevDatabaseReset.checkIsLocal("jdbc:mariadb://trazabilidad_db:3306/traceability_lean");
 
+        // "db" es la base de datos de produccion/ y host.docker.internal, el equipo anfitrion: nunca se borran
+        assertThatThrownBy(() -> DevDatabaseReset.checkIsLocal("jdbc:mariadb://db:3306/traceability_lean"))
+                .isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> DevDatabaseReset.checkIsLocal("jdbc:mariadb://host.docker.internal:3307/traceability_lean"))
+                .isInstanceOf(IllegalStateException.class);
         assertThatThrownBy(() -> DevDatabaseReset.checkIsLocal("jdbc:mariadb://db.empresa.com:3306/traceability_lean"))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("no es local");

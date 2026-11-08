@@ -1,22 +1,46 @@
-# Entorno de desarrollo: API y frontend en contenedores, sin instalar JDK ni Node.
-# La base de datos se levanta aparte con trazabilidad-api/database (init_db.sh o update_db.sh)
-# y queda publicada en el puerto 3307 del equipo.
+# Entorno de desarrollo: base de datos, API y frontend en un mismo grupo de contenedores
+# (gargantapp-dev), sin instalar JDK ni Node.
 #
 #   docker compose up -d
 #
 # Frontend: https://localhost:5173 (certificado local: el navegador avisa la primera vez)
 # API:      http://localhost:8080/api (el front la usa a través de /api)
+# MariaDB:  localhost:3307 (para IntelliJ, ./gradlew bootRun o un cliente SQL)
 #
+# Contraseñas de la base de datos y de los tokens: trazabilidad-api/database/.env (copia de .env.example).
 # Desde un móvil en la misma WiFi: https://<IP del PC>:5173 (necesario para usar la cámara).
 # Para volver a HTTP sin certificado: HTTPS=false docker compose up -d
+name: gargantapp-dev
+
 services:
+  db:
+    image: mariadb:11.4
+    # Nombre fijo: los scripts de database/ y el README lo usan con docker exec
+    container_name: trazabilidad_db
+    restart: unless-stopped
+    # El mismo fichero que usa la API: las contraseñas estan en un solo sitio
+    env_file: ./trazabilidad-api/database/.env
+    environment:
+      MARIADB_DATABASE: traceability_lean
+      MARIADB_USER: trazabilidad_app
+    # La imagen espera MARIADB_ROOT_PASSWORD y MARIADB_PASSWORD: se toman de DB_ROOT_PASSWORD y DB_PASSWORD
+    entrypoint: ["sh", "-c", "export MARIADB_ROOT_PASSWORD=\"$$DB_ROOT_PASSWORD\" MARIADB_PASSWORD=\"$$DB_PASSWORD\"; exec docker-entrypoint.sh mariadbd"]
+    ports:
+      - "127.0.0.1:3307:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      retries: 30
+
   api:
     image: eclipse-temurin:17-jdk
     working_dir: /app
     command: sh ./gradlew bootRun --no-daemon
     environment:
-      # Desde el contenedor, la MariaDB del equipo se alcanza por host.docker.internal
-      SPRING_DATASOURCE_URL: jdbc:mariadb://host.docker.internal:3307/traceability_lean
+      # Por el nombre del contenedor, que solo existe en desarrollo: el reinicio dev solo acepta este host
+      SPRING_DATASOURCE_URL: jdbc:mariadb://trazabilidad_db:3306/traceability_lean
       # Perfil dev. Con DEV_RESET_DB=true la base de datos se reinicia con los datos de prueba al
       # arrancar y al cambiar los scripts de database/. Viene APAGADO: asi una instalacion de un
       # cliente nunca borra sus datos. Para encenderlo en tu equipo: DEV_RESET_DB=true en el .env
@@ -24,14 +48,15 @@ services:
       SPRING_PROFILES_ACTIVE: dev
       APP_DEV_RESET_DB: ${DEV_RESET_DB:-false}
       GRADLE_USER_HOME: /gradle
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     ports:
       - "8080:8080"
     volumes:
       - ./trazabilidad-api:/app
       - gradle_cache:/gradle
       - api_build:/app/build
+    depends_on:
+      db:
+        condition: service_healthy
 
   front:
     image: node:22
@@ -53,6 +78,7 @@ services:
       - api
 
 volumes:
+  db_data:
   gradle_cache:
   api_build:
   front_node_modules:

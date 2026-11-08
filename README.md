@@ -78,11 +78,11 @@ Con el perfil `dev` la API **reinicia la base de datos con los datos de prueba c
   ```bash
   echo DEV_RESET_DB=true > .env
   ```
-- Por seguridad solo reinicia bases de datos locales (`localhost`, `127.0.0.1` o `host.docker.internal`). **No uses el perfil `dev` en producción.**
+- Por seguridad solo reinicia bases de datos locales (`localhost`, `127.0.0.1` o el contenedor `trazabilidad_db` del compose de desarrollo). **No uses el perfil `dev` en producción.**
 
 ### Todo con Docker (sin instalar JDK ni Node)
 
-Con la base de datos ya en marcha, desde la raíz del repositorio `docker compose up -d` arranca la API (`http://localhost:8080`) y el frontend (`https://localhost:5173`, con un certificado local: el navegador avisa la primera vez). El frontend llama a la API a través de `/api`, que Vite reenvía al contenedor de la API. Para usar HTTP sin certificado: `HTTPS=false docker compose up -d`.
+Desde la raíz del repositorio, `docker compose up -d` arranca el grupo de contenedores **`gargantapp-dev`**: la base de datos (`trazabilidad_db`, en `localhost:3307`, con las contraseñas de `trazabilidad-api/database/.env`), la API (`http://localhost:8080`) y el frontend (`https://localhost:5173`, con un certificado local: el navegador avisa la primera vez). El frontend llama a la API a través de `/api`, que Vite reenvía al contenedor de la API. Para usar HTTP sin certificado: `HTTPS=false docker compose up -d`.
 
 ### Escanear etiquetas con la cámara del móvil
 

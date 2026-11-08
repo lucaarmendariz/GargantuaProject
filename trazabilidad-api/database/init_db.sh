@@ -20,8 +20,8 @@ echo "🐳 SCRIPT 1: LEVANTANDO ENTORNO DOCKER MARIADB"
 echo "================================================="
 
 # 1. Levantar Docker (Si ya estaba levantado, no hace nada)
-echo "🚀 Levantando contenedor..."
-docker compose up -d
+echo "🚀 Levantando el contenedor de la base de datos (grupo gargantapp-dev)..."
+docker compose -f ../../docker-compose.yml up -d db
 
 # 2. Esperar a que MariaDB esté lista (Usa las credenciales maestras del docker-compose)
 echo "⏳ Esperando a que el motor de MariaDB responda..."
