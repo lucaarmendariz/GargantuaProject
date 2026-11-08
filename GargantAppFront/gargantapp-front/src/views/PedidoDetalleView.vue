@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import apiClient from '../api';
+import { askConfirm } from '../utils/confirm';
 import EventTimeline from '../components/EventTimeline.vue';
 import TabMenu from '../components/TabMenu.vue';
 import { useAction } from '../composables/useAction';
@@ -78,13 +79,13 @@ const addLine = () => run(async () => {
   newQuantity.value = '';
 }, 'Cantidad reservada en el lote.', 'No se pudo reservar el lote.');
 
-const removeLine = (line) => {
-  if (!confirm(`¿Retirar el lote ${line.lotNumber} del pedido? Se liberará lo reservado.`)) return;
+const removeLine = async (line) => {
+  if (!(await askConfirm({ title: `¿Retirar el lote ${line.lotNumber} del pedido?`, message: "Se liberará lo reservado.", confirmText: "Retirar del pedido", danger: true }))) return;
   run(() => apiClient.delete(`/pedidos/${props.id}/lineas/${line.lineId}`), 'Lote retirado del pedido.', 'No se pudo retirar el lote.');
 };
 
-const prepareOrder = () => {
-  if (!confirm('¿Marcar el pedido como preparado? Se restará del stock lo consumido y ya no se podrán cambiar los lotes.')) return;
+const prepareOrder = async () => {
+  if (!(await askConfirm({ title: "¿Marcar el pedido como preparado?", message: "Se restará del stock lo consumido y ya no se podrán cambiar los lotes.", confirmText: "Marcar como preparado" }))) return;
   run(() => apiClient.post(`/pedidos/${props.id}/preparar`, {
     lines: detail.value.lines.map((line) => ({
       lineId: line.lineId,
@@ -93,8 +94,8 @@ const prepareOrder = () => {
   }), 'Pedido preparado y stock actualizado.', 'No se pudo marcar el pedido como preparado.');
 };
 
-const deliverOrder = () => {
-  if (!confirm('¿Marcar el pedido como entregado al cliente? Se cerrará automáticamente pasados dos días.')) return;
+const deliverOrder = async () => {
+  if (!(await askConfirm({ title: "¿Marcar el pedido como entregado al cliente?", message: "Se cerrará automáticamente pasados dos días.", confirmText: "Marcar como entregado" }))) return;
   run(() => apiClient.post(`/pedidos/${props.id}/entregar`), 'Pedido entregado.', 'No se pudo marcar el pedido como entregado.');
 };
 
@@ -107,8 +108,8 @@ const goBack = () => {
   }
 };
 
-const cancelOrder = () => {
-  if (!confirm('¿Cancelar el pedido? Se liberará todo lo reservado y no se podrá reabrir.')) return;
+const cancelOrder = async () => {
+  if (!(await askConfirm({ title: "¿Cancelar el pedido?", message: "Se liberará todo lo reservado y no se podrá reabrir.", confirmText: "Cancelar el pedido", danger: true }))) return;
   run(() => apiClient.post(`/pedidos/${props.id}/cancelar`), 'Pedido cancelado.', 'No se pudo cancelar el pedido.');
 };
 

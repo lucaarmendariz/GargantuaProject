@@ -66,6 +66,7 @@ public class ResultSetMapper {
                 .lotId(rs.getInt("lot_id"))
                 .actionType(rs.getString("action_type"))
                 .operator(rs.getString("operator"))
+                .operatorUsername(rs.getString("operator_username"))
                 .actionTimestamp(rs.getObject("action_timestamp", Long.class))
                 .quantityAffected(rs.getBigDecimal("quantity_affected"))
                 .ocrRawText(rs.getString("ocr_raw_text"))
@@ -129,6 +130,7 @@ public class ResultSetMapper {
                 .eventType(rs.getString("event_type"))
                 .quantity(rs.getBigDecimal("quantity"))
                 .operator(rs.getString("operator"))
+                .operatorUsername(rs.getString("operator_username"))
                 .notes(rs.getString("notes"))
                 .eventTimestamp(rs.getObject("event_timestamp", Long.class))
                 .build();

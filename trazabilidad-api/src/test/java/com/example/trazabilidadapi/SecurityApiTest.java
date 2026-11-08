@@ -77,7 +77,7 @@ class SecurityApiTest extends IntegrationTestBase {
                         .contentType(MediaType.APPLICATION_JSON).content(SCAN))
                 .andExpect(status().isCreated());
         mvc.perform(get("/api/historial/lote/1").header(HttpHeaders.AUTHORIZATION, bearer("ADMIN")))
-                .andExpect(jsonPath("$[?(@.operator == 'Usuario Test')]").exists())
+                .andExpect(jsonPath("$[?(@.operator == 'Usuario Test' && @.operatorUsername == 'test_operario')]").exists())
                 .andExpect(jsonPath("$[?(@.operator == 'Otro')]").doesNotExist());
     }
 

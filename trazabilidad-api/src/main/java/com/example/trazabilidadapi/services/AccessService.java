@@ -13,8 +13,11 @@ import com.example.trazabilidadapi.repositories.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import com.example.trazabilidadapi.models.UserProfile;
+
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.regex.Pattern;
 import java.util.Set;
 
 /**
@@ -38,6 +41,31 @@ public class AccessService {
         this.repository = repository;
         this.users = users;
         this.passwordEncoder = passwordEncoder;
+    }
+
+    // Solo imagenes de mapa de bits en base64 (no SVG: puede llevar codigo). El front las reduce a 256 px.
+    private static final Pattern AVATAR = Pattern.compile("^data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$");
+    private static final int MAX_AVATAR = 300_000;
+
+    public UserProfile getProfile(String username) {
+        return repository.getProfile(username);
+    }
+
+    public String getAvatar(String username) {
+        return repository.getAvatar(username);
+    }
+
+    /** El propio usuario cambia su nombre y su foto (avatar null = quitar la foto). */
+    public UserProfile updateProfile(String username, String name, String avatar) {
+        String trimmed = name == null ? "" : name.trim();
+        if (trimmed.isEmpty() || trimmed.length() > 100) {
+            throw new IllegalArgumentException("El nombre es obligatorio y admite 100 caracteres.");
+        }
+        if (avatar != null && (avatar.length() > MAX_AVATAR || !AVATAR.matcher(avatar).matches())) {
+            throw new IllegalArgumentException("La foto debe ser una imagen JPEG, PNG o WebP de menos de 200 KB.");
+        }
+        repository.updateProfile(username, trimmed, avatar);
+        return repository.getProfile(username);
     }
 
     /** El propio usuario cambia su contraseña: tiene que saber la actual. */

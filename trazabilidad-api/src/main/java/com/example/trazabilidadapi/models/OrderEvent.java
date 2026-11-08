@@ -17,6 +17,7 @@ public class OrderEvent {
     private String eventType;
     private BigDecimal quantity;
     private String operator;
+    private String operatorUsername;
     private String notes;
     private Long eventTimestamp;
 }

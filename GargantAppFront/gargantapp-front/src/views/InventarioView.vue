@@ -6,6 +6,7 @@ import ProductForm from '../components/ProductForm.vue';
 import LotForm from '../components/LotForm.vue';
 import TabMenu from '../components/TabMenu.vue';
 import { useTabRoute } from '../composables/useTabRoute';
+import { askConfirm } from '../utils/confirm';
 import { formatEpochDate } from '../utils/date';
 import { can } from '../utils/session';
 
@@ -62,10 +63,14 @@ const onLotCreated = () => {
 };
 
 // Manejo seguro del botón borrar
-const handleConfirmDelete = (id, name) => {
-  if (confirm(`¿Seguro que deseas retirar el producto maestro "${name}" de la circulación de la planta?`)) {
-    deleteProduct(id);
-  }
+const handleConfirmDelete = async (id, name) => {
+  const ok = await askConfirm({
+    title: `¿Dar de baja el producto "${name}"?`,
+    message: 'Deja de estar disponible en la planta. Sus lotes y su historial se conservan, y se puede reactivar editándolo.',
+    confirmText: 'Dar de baja',
+    danger: true,
+  });
+  if (ok) deleteProduct(id);
 };
 </script>
 

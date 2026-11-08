@@ -49,7 +49,7 @@ public class LotHistoryController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Solo quien gestiona los lotes puede desbloquearlos.");
         }
         // El operario sale de la sesion, no de lo que envie el cliente
-        history.setOperator(jwt.getClaimAsString("name"));
+        history.setOperator(jwt.getSubject());
         boolean success = service.registerOcrScan(history);
         if (success) {
             return ResponseEntity.status(HttpStatus.CREATED).body("Escaneo del OCR registrado correctamente.");

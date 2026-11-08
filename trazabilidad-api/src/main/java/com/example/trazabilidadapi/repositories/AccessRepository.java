@@ -3,6 +3,7 @@ package com.example.trazabilidadapi.repositories;
 import com.example.trazabilidadapi.models.AppModule;
 import com.example.trazabilidadapi.models.ModuleAccess;
 import com.example.trazabilidadapi.models.RolePermission;
+import com.example.trazabilidadapi.models.UserProfile;
 import com.example.trazabilidadapi.models.UserSummary;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -12,6 +13,7 @@ import java.sql.CallableStatement;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Supplier;
 
 /** Modulos contratados, permisos por rol y usuarios del cliente (procedimientos del bloque 5). */
@@ -68,6 +70,23 @@ public class AccessRepository {
             stmt.execute();
             return stmt.getInt(5);
         }));
+    }
+
+    public UserProfile getProfile(String username) {
+        return run(() -> jdbcTemplate.query("CALL AppUser_GetProfile(?)", (rs, i) ->
+                new UserProfile(rs.getString("username"), rs.getString("name"), rs.getString("role"),
+                        rs.getString("avatar"), rs.getObject("created_at", Long.class)), username))
+                .stream().findFirst().orElse(null);
+    }
+
+    /** Foto de cualquier usuario, tambien de los dados de baja (firman movimientos antiguos). */
+    public String getAvatar(String username) {
+        return run(() -> jdbcTemplate.query("CALL AppUser_GetAvatar(?)", (rs, i) -> rs.getString("avatar"), username))
+                .stream().filter(Objects::nonNull).findFirst().orElse(null);
+    }
+
+    public void updateProfile(String username, String name, String avatar) {
+        run(() -> jdbcTemplate.update("CALL AppUser_UpdateProfile(?, ?, ?)", username, name, avatar));
     }
 
     public void setPassword(String username, String passwordHash) {

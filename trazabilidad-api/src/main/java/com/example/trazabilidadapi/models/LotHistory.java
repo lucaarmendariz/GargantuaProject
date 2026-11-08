@@ -13,6 +13,7 @@ public class LotHistory {
     private int lotId;
     private String actionType;
     private String operator;
+    private String operatorUsername;
     private Long actionTimestamp;
     private BigDecimal quantityAffected;
     private String ocrRawText;

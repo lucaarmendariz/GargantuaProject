@@ -1,5 +1,13 @@
 DELIMITER ;;
 
+-- Nombre actual de un usuario. Los movimientos guardan el nombre de ese momento y el usuario
+-- (para su foto): la API pasa el usuario en _operator y el nombre se busca aqui.
+CREATE OR REPLACE FUNCTION `Operator_Name`(_username VARCHAR(50)) RETURNS VARCHAR(100)
+    READS SQL DATA
+BEGIN
+    RETURN COALESCE((SELECT name FROM app_user WHERE username = _username), _username);
+END;;
+
 -- =================================================================
 -- BLOQUE 1: CRUD DE PRODUCTOS (product)
 -- =================================================================
@@ -239,8 +247,8 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'El lote no está bloqueado.', MYSQL_ERRNO = 125;
     END IF;
 
-    INSERT INTO lot_history (lot_id, action_type, operator, quantity_affected, ocr_raw_text, observations)
-    VALUES (_lotId, _actionType, _operator, _quantityAffected, _ocrRawText, _observations);
+    INSERT INTO lot_history (lot_id, action_type, operator, operator_username, quantity_affected, ocr_raw_text, observations)
+    VALUES (_lotId, _actionType, Operator_Name(_operator), _operator, _quantityAffected, _ocrRawText, _observations);
 
     SET _historyId = LAST_INSERT_ID();
     COMMIT;
@@ -251,7 +259,10 @@ CREATE OR REPLACE PROCEDURE `LotHistory_FindByLotId`(
     IN _lotId INT
 )
 BEGIN
-    SELECT lh.history_id, lh.lot_id, lh.action_type, lh.operator, UNIX_TIMESTAMP(lh.action_timestamp) AS action_timestamp, lh.quantity_affected, lh.ocr_raw_text, lh.observations, co.order_number
+    SELECT lh.history_id, lh.lot_id, lh.action_type, lh.operator, 
+           -- Usuario para la foto; en movimientos antiguos (sin usuario) se busca por el nombre
+           COALESCE(lh.operator_username, (SELECT u.username FROM app_user u WHERE u.name = lh.operator LIMIT 1)) AS operator_username,
+           UNIX_TIMESTAMP(lh.action_timestamp) AS action_timestamp, lh.quantity_affected, lh.ocr_raw_text, lh.observations, co.order_number
     FROM lot_history lh
              LEFT JOIN customer_order co ON co.order_id = lh.order_id
     WHERE lh.lot_id = _lotId
@@ -387,6 +398,25 @@ BEGIN
     SET _newUserId = LAST_INSERT_ID();
 END;;
 
+-- Foto de cualquier usuario (tambien desactivado: sus movimientos antiguos la siguen mostrando)
+CREATE OR REPLACE PROCEDURE `AppUser_GetAvatar`(IN _username VARCHAR(50))
+BEGIN
+    SELECT avatar FROM app_user WHERE username = _username;
+END;;
+
+-- Perfil del propio usuario (sin la contraseña)
+CREATE OR REPLACE PROCEDURE `AppUser_GetProfile`(IN _username VARCHAR(50))
+BEGIN
+    SELECT username, name, role, avatar, UNIX_TIMESTAMP(created_at) AS created_at
+    FROM app_user WHERE username = _username AND is_active = 1;
+END;;
+
+-- El propio usuario cambia su nombre y su foto (la API ya los ha validado; foto NULL = sin foto)
+CREATE OR REPLACE PROCEDURE `AppUser_UpdateProfile`(IN _username VARCHAR(50), IN _name VARCHAR(100), IN _avatar MEDIUMTEXT)
+BEGIN
+    UPDATE app_user SET name = _name, avatar = _avatar WHERE username = _username AND is_active = 1;
+END;;
+
 -- Cambia la contraseña del propio usuario (la API ya ha comprobado la actual)
 CREATE OR REPLACE PROCEDURE `AppUser_SetPassword`(IN _username VARCHAR(50), IN _passwordHash VARCHAR(255))
 BEGIN
@@ -459,11 +489,11 @@ BEGIN
     END IF;
 
     INSERT INTO customer_order (order_number, customer_name, scheduled_date, notes, created_by)
-    VALUES (_orderNumber, _customerName, _scheduledDate, _notes, _operator);
+    VALUES (_orderNumber, _customerName, _scheduledDate, _notes, Operator_Name(_operator));
     SET _orderId = LAST_INSERT_ID();
 
-    INSERT INTO order_event (order_id, event_type, operator, notes)
-    VALUES (_orderId, 'CREADO', _operator, _notes);
+    INSERT INTO order_event (order_id, event_type, operator, operator_username, notes)
+    VALUES (_orderId, 'CREADO', Operator_Name(_operator), _operator, _notes);
 END;;
 
 -- Todos los filtros son opcionales. _status admite varios estados separados por comas
@@ -510,7 +540,8 @@ END;;
 
 CREATE OR REPLACE PROCEDURE `OrderEvent_FindByOrder`(IN _orderId INT)
 BEGIN
-    SELECT oe.event_id, oe.order_id, oe.lot_id, pl.lot_number, pl.measure_unit, oe.event_type, oe.quantity, oe.operator, oe.notes,
+    SELECT oe.event_id, oe.order_id, oe.lot_id, pl.lot_number, pl.measure_unit, oe.event_type, oe.quantity, oe.operator, COALESCE(oe.operator_username, (SELECT u.username FROM app_user u WHERE u.name = oe.operator LIMIT 1)) AS operator_username,
+           oe.notes,
            UNIX_TIMESTAMP(oe.event_timestamp) AS event_timestamp
     FROM order_event oe
              LEFT JOIN product_lot pl ON pl.lot_id = oe.lot_id
@@ -558,10 +589,10 @@ BEGIN
     INSERT INTO order_line (order_id, lot_id, reserved_quantity) VALUES (_orderId, _lotId, _quantity);
     SET _lineId = LAST_INSERT_ID();
 
-    INSERT INTO order_event (order_id, lot_id, event_type, quantity, operator)
-    VALUES (_orderId, _lotId, 'RESERVADO', _quantity, _operator);
-    INSERT INTO lot_history (lot_id, action_type, operator, quantity_affected, order_id)
-    VALUES (_lotId, 'RESERVADO', _operator, _quantity, _orderId);
+    INSERT INTO order_event (order_id, lot_id, event_type, quantity, operator, operator_username)
+    VALUES (_orderId, _lotId, 'RESERVADO', _quantity, Operator_Name(_operator), _operator);
+    INSERT INTO lot_history (lot_id, action_type, operator, operator_username, quantity_affected, order_id)
+    VALUES (_lotId, 'RESERVADO', Operator_Name(_operator), _operator, _quantity, _orderId);
 END;;
 
 CREATE OR REPLACE PROCEDURE `OrderLine_Remove`(
@@ -586,10 +617,10 @@ BEGIN
     UPDATE product_lot SET reserved_quantity = reserved_quantity - v_reserved WHERE lot_id = v_lot;
     DELETE FROM order_line WHERE line_id = _lineId;
 
-    INSERT INTO order_event (order_id, lot_id, event_type, quantity, operator, notes)
-    VALUES (_orderId, v_lot, 'LIBERADO', v_reserved, _operator, 'Lote retirado del pedido');
-    INSERT INTO lot_history (lot_id, action_type, operator, quantity_affected, observations, order_id)
-    VALUES (v_lot, 'LIBERADO', _operator, v_reserved, 'Lote retirado del pedido', _orderId);
+    INSERT INTO order_event (order_id, lot_id, event_type, quantity, operator, operator_username, notes)
+    VALUES (_orderId, v_lot, 'LIBERADO', v_reserved, Operator_Name(_operator), _operator, 'Lote retirado del pedido');
+    INSERT INTO lot_history (lot_id, action_type, operator, operator_username, quantity_affected, observations, order_id)
+    VALUES (v_lot, 'LIBERADO', Operator_Name(_operator), _operator, v_reserved, 'Lote retirado del pedido', _orderId);
 END;;
 
 -- Libera lo reservado y resta del stock lo realmente usado, que puede ser mas o menos
@@ -636,10 +667,10 @@ BEGIN
     UPDATE order_line SET consumed_quantity = _consumed WHERE line_id = _lineId;
 
     SET v_note = CONCAT('Reservado: ', v_reserved + 0);
-    INSERT INTO order_event (order_id, lot_id, event_type, quantity, operator, notes)
-    VALUES (_orderId, v_lot, 'CONSUMIDO', _consumed, _operator, v_note);
-    INSERT INTO lot_history (lot_id, action_type, operator, quantity_affected, observations, order_id)
-    VALUES (v_lot, 'CONSUMIDO', _operator, _consumed, v_note, _orderId);
+    INSERT INTO order_event (order_id, lot_id, event_type, quantity, operator, operator_username, notes)
+    VALUES (_orderId, v_lot, 'CONSUMIDO', _consumed, Operator_Name(_operator), _operator, v_note);
+    INSERT INTO lot_history (lot_id, action_type, operator, operator_username, quantity_affected, observations, order_id)
+    VALUES (v_lot, 'CONSUMIDO', Operator_Name(_operator), _operator, _consumed, v_note, _orderId);
 END;;
 
 -- Ciclo de un pedido: ABIERTO -> PREPARADO -> ENTREGADO -> CERRADO (automatico).
@@ -663,9 +694,9 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Falta indicar el consumo real de alguna linea.', MYSQL_ERRNO = 119;
     END IF;
 
-    UPDATE customer_order SET status = 'PREPARADO', prepared_by = _operator, prepared_at = NOW() WHERE order_id = _orderId;
+    UPDATE customer_order SET status = 'PREPARADO', prepared_by = Operator_Name(_operator), prepared_at = NOW() WHERE order_id = _orderId;
 
-    INSERT INTO order_event (order_id, event_type, operator) VALUES (_orderId, 'PREPARADO', _operator);
+    INSERT INTO order_event (order_id, event_type, operator, operator_username) VALUES (_orderId, 'PREPARADO', Operator_Name(_operator), _operator);
 END;;
 
 -- Entregar: solo un pedido preparado
@@ -686,9 +717,9 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Solo se puede entregar un pedido preparado.', MYSQL_ERRNO = 123;
     END IF;
 
-    UPDATE customer_order SET status = 'ENTREGADO', delivered_by = _operator, delivered_at = NOW() WHERE order_id = _orderId;
+    UPDATE customer_order SET status = 'ENTREGADO', delivered_by = Operator_Name(_operator), delivered_at = NOW() WHERE order_id = _orderId;
 
-    INSERT INTO order_event (order_id, event_type, operator) VALUES (_orderId, 'ENTREGADO', _operator);
+    INSERT INTO order_event (order_id, event_type, operator, operator_username) VALUES (_orderId, 'ENTREGADO', Operator_Name(_operator), _operator);
 END;;
 
 -- Cierre automatico: archiva los pedidos entregados hace al menos _hours horas
@@ -722,17 +753,17 @@ BEGIN
     SET pl.reserved_quantity = pl.reserved_quantity - ol.reserved_quantity
     WHERE ol.order_id = _orderId;
 
-    INSERT INTO order_event (order_id, lot_id, event_type, quantity, operator, notes)
-    SELECT _orderId, lot_id, 'LIBERADO', reserved_quantity, _operator, 'Pedido cancelado'
+    INSERT INTO order_event (order_id, lot_id, event_type, quantity, operator, operator_username, notes)
+    SELECT _orderId, lot_id, 'LIBERADO', reserved_quantity, Operator_Name(_operator), _operator, 'Pedido cancelado'
     FROM order_line WHERE order_id = _orderId;
 
-    INSERT INTO lot_history (lot_id, action_type, operator, quantity_affected, observations, order_id)
-    SELECT lot_id, 'LIBERADO', _operator, reserved_quantity, 'Pedido cancelado', _orderId
+    INSERT INTO lot_history (lot_id, action_type, operator, operator_username, quantity_affected, observations, order_id)
+    SELECT lot_id, 'LIBERADO', Operator_Name(_operator), _operator, reserved_quantity, 'Pedido cancelado', _orderId
     FROM order_line WHERE order_id = _orderId;
 
-    UPDATE customer_order SET status = 'CANCELADO', closed_by = _operator, closed_at = NOW() WHERE order_id = _orderId;
+    UPDATE customer_order SET status = 'CANCELADO', closed_by = Operator_Name(_operator), closed_at = NOW() WHERE order_id = _orderId;
 
-    INSERT INTO order_event (order_id, event_type, operator) VALUES (_orderId, 'CANCELADO', _operator);
+    INSERT INTO order_event (order_id, event_type, operator, operator_username) VALUES (_orderId, 'CANCELADO', Operator_Name(_operator), _operator);
 END;;
 
 -- Lotes en uso: reservados en pedidos abiertos, opcionalmente de un rango de dias

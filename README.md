@@ -136,7 +136,7 @@ Permisos por defecto (los de antes de existir el panel): `ENCARGADO` gestiona Pe
 
 Usuario de prueba del proveedor (solo en la base de datos de desarrollo, `03_seeds.sql`): `superadmin` / `moncorp2026`.
 
-Las instalaciones nuevas en clientes crean `superadmin` con tu contraseña desde `produccion/instalar.sh` (ver «Instalar en un cliente»). Cada usuario cambia su contraseña en **Mi contraseña** (cabecera del Panel Central).
+Las instalaciones nuevas en clientes crean `superadmin` con tu contraseña desde `produccion/instalar.sh` (ver «Instalar en un cliente»). Cada usuario cambia su nombre, su foto y su contraseña en **Mi perfil** (pulsando su nombre en la cabecera del Panel Central).
 
 **Instalaciones antiguas actualizadas con la migración `004`.** La migración crea `superadmin` desactivado, porque la contraseña de prueba es pública. Genera el hash de una contraseña propia y actívalo, desde `trazabilidad-api/database`:
 
@@ -238,6 +238,8 @@ docker exec -i -e MYSQL_PWD="$DB_PASSWORD" trazabilidad_db mariadb -utrazabilida
 docker exec -i -e MYSQL_PWD="$DB_PASSWORD" trazabilidad_db mariadb -utrazabilidad_app traceability_lean < migrations/002_estados_pedido.sql
 docker exec -i -e MYSQL_PWD="$DB_PASSWORD" trazabilidad_db mariadb -utrazabilidad_app traceability_lean < migrations/003_gtin_producto.sql
 docker exec -i -e MYSQL_PWD="$DB_PASSWORD" trazabilidad_db mariadb -utrazabilidad_app traceability_lean < migrations/004_modulos_permisos.sql
+docker exec -i -e MYSQL_PWD="$DB_PASSWORD" trazabilidad_db mariadb -utrazabilidad_app traceability_lean < migrations/005_perfil_usuario.sql
+docker exec -i -e MYSQL_PWD="$DB_PASSWORD" trazabilidad_db mariadb -utrazabilidad_app traceability_lean < migrations/006_operario_usuario.sql
 docker exec -i -e MYSQL_PWD="$DB_PASSWORD" trazabilidad_db mariadb -utrazabilidad_app traceability_lean < 02_procedures.sql
 ```
 

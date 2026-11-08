@@ -71,7 +71,8 @@ CREATE TABLE lot_history (
          history_id INT AUTO_INCREMENT PRIMARY KEY,
          lot_id INT NOT NULL,
          action_type VARCHAR(50) NOT NULL,
-         operator VARCHAR(100) NOT NULL,
+         operator VARCHAR(100) NOT NULL, -- Nombre de quien lo hizo, tal y como se llamaba en ese momento
+         operator_username VARCHAR(50) DEFAULT NULL, -- Su usuario: para mostrar su foto (NULL en movimientos antiguos)
          action_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
          quantity_affected DECIMAL(12,4) DEFAULT NULL,
          ocr_raw_text TEXT DEFAULT NULL,
@@ -87,6 +88,7 @@ CREATE TABLE app_user (
           username VARCHAR(50) UNIQUE NOT NULL,
           password_hash VARCHAR(255) NOT NULL, -- Guardaremos las contraseñas cifradas
           name VARCHAR(100) NOT NULL,
+          avatar MEDIUMTEXT DEFAULT NULL, -- Foto de perfil como data URL (JPEG/PNG/WebP), la sube el propio usuario
           role VARCHAR(50) NOT NULL DEFAULT 'OPERARIO', -- OPERARIO, ENCARGADO, ADMIN (del cliente), SUPERADMIN (proveedor de la app)
           is_active TINYINT(1) DEFAULT 1 NOT NULL,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -132,6 +134,7 @@ CREATE TABLE order_event (
          event_type VARCHAR(30) NOT NULL, -- CREADO, RESERVADO, LIBERADO, CONSUMIDO, CERRADO, CANCELADO
          quantity DECIMAL(12,4) DEFAULT NULL,
          operator VARCHAR(100) NOT NULL,
+         operator_username VARCHAR(50) DEFAULT NULL,
          notes TEXT DEFAULT NULL,
          event_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
          CONSTRAINT fk_event_order FOREIGN KEY (order_id) REFERENCES customer_order (order_id),

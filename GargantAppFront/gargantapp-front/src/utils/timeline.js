@@ -7,9 +7,9 @@ export function historyToTimeline(log) {
   return {
     key: log.historyId,
     title: log.actionType,
+    person: { name: log.operator, username: log.operatorUsername },
     time: formatEpochDateTime(log.actionTimestamp),
     rows: [
-      row('Operario', log.operator),
       log.orderNumber ? row('Pedido', log.orderNumber) : null,
       log.quantityAffected !== null && log.quantityAffected !== undefined ? row('Cantidad afectada', log.quantityAffected) : null,
       log.observations ? row('Observaciones', log.observations) : null,
@@ -26,9 +26,9 @@ export function eventToTimeline(event) {
   return {
     key: event.eventId,
     title: event.eventType,
+    person: { name: event.operator, username: event.operatorUsername },
     time: formatEpochDateTime(event.eventTimestamp),
     rows: [
-      row('Operario', event.operator),
       event.lotNumber ? row('Lote', event.lotNumber) : null,
       quantity ? row('Cantidad', quantity) : null,
       event.notes ? row('Observaciones', event.notes) : null,

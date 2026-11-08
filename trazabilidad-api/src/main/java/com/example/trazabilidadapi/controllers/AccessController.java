@@ -1,18 +1,22 @@
 package com.example.trazabilidadapi.controllers;
 
 import com.example.trazabilidadapi.models.AppModule;
+import com.example.trazabilidadapi.models.AppUser;
 import com.example.trazabilidadapi.models.CreateUserRequest;
 import com.example.trazabilidadapi.models.RolePermission;
 import com.example.trazabilidadapi.models.UpdateUserRequest;
+import com.example.trazabilidadapi.models.UserProfile;
 import com.example.trazabilidadapi.models.UserSummary;
 import com.example.trazabilidadapi.services.AccessService;
 import com.example.trazabilidadapi.services.AccessService.UserAccess;
+import com.example.trazabilidadapi.services.JwtService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -25,15 +29,40 @@ import java.util.Map;
 public class AccessController {
 
     private final AccessService service;
+    private final JwtService jwtService;
 
-    public AccessController(AccessService service) {
+    public AccessController(AccessService service, JwtService jwtService) {
         this.service = service;
+        this.jwtService = jwtService;
     }
 
     /** Lo que el usuario conectado puede hacer: el front muestra u oculta modulos y botones con esto. */
     @GetMapping("/me/permisos")
     public UserAccess myAccess(@AuthenticationPrincipal Jwt jwt) {
         return service.forUser(jwt.getSubject());
+    }
+
+    @GetMapping("/me/perfil")
+    public UserProfile profile(@AuthenticationPrincipal Jwt jwt) {
+        return service.getProfile(jwt.getSubject());
+    }
+
+    /** Foto de quien firma un movimiento de la trazabilidad (la ve cualquier usuario que haya entrado). */
+    @GetMapping("/usuarios/{username}/foto")
+    public Map<String, String> avatar(@PathVariable String username) {
+        return Collections.singletonMap("avatar", service.getAvatar(username));
+    }
+
+    /** Perfil guardado y un token nuevo, que lleva el nombre que se ve en la cabecera. */
+    public record SavedProfile(UserProfile perfil, String token) {
+    }
+
+    /** Cambiar el propio nombre y la foto: {"name": "...", "avatar": "data:image/jpeg;base64,..." o null} */
+    @PutMapping("/me/perfil")
+    public SavedProfile updateProfile(@AuthenticationPrincipal Jwt jwt, @RequestBody Map<String, String> body) {
+        UserProfile profile = service.updateProfile(jwt.getSubject(), body.get("name"), body.get("avatar"));
+        AppUser user = AppUser.builder().username(profile.username()).name(profile.name()).role(profile.role()).build();
+        return new SavedProfile(profile, jwtService.issueToken(user));
     }
 
     /** Cambiar la propia contraseña: {"actual": "...", "nueva": "..."} */
