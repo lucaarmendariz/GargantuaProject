@@ -2,8 +2,10 @@ package com.example.trazabilidadapi.repositories;
 
 import com.example.trazabilidadapi.models.LotHistory;
 import com.example.trazabilidadapi.util.ResultSetMapper;
+import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.sql.CallableStatement;
 import java.sql.Connection;
@@ -53,7 +55,14 @@ public class LotHistoryRepository {
             stmt.execute();
             return stmt.getInt(7);
         } catch (SQLException e) {
-            throw new RuntimeException("Error al guardar registro en el historial", e);
+            // Reglas del procedimiento: el mensaje se muestra al operario tal cual
+            String message = String.valueOf(e.getMessage()).replaceFirst("^\\(conn=\\d+\\)\\s*", "");
+            throw switch (e.getErrorCode()) {
+                case 106 -> new ResponseStatusException(HttpStatus.NOT_FOUND, message);
+                case 112 -> new ResponseStatusException(HttpStatus.CONFLICT, message);
+                case 125 -> new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
+                default -> new RuntimeException("Error al guardar registro en el historial", e);
+            };
         }
     }
 }

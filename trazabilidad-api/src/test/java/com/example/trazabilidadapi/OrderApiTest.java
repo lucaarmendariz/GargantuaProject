@@ -18,6 +18,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.hamcrest.Matchers.closeTo;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -26,6 +27,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -204,6 +206,37 @@ class OrderApiTest extends IntegrationTestBase {
     void blockedLotCannotBeUsed() throws Exception {
         // Lote 2 de los datos de prueba: su ultimo movimiento manual es BLOQUEADO
         addLine(order(), 2, 1).andExpect(status().isConflict());
+    }
+
+    private ResultActions movement(String role, int lot, String action, double quantity) throws Exception {
+        return mvc.perform(as(role, post("/api/historial/escanear"))
+                .content("{\"lotId\":" + lot + ",\"actionType\":\"" + action + "\",\"quantityAffected\":" + quantity + "}"));
+    }
+
+    @Test
+    void aQualityBlockIsOnlyLiftedByUnblockingOnPurpose() throws Exception {
+        int lot = lot(10);
+        movement("ADMIN", lot, "BLOQUEADO", 10).andExpect(status().isCreated());
+
+        // Otro movimiento cualquiera ya no levanta el bloqueo: el lote sigue sin poder usarse
+        movement("OPERARIO", lot, "EN_PRODUCCION", 1)
+                .andExpect(status().isConflict())
+                .andExpect(content().string(containsString("bloqueado por calidad")));
+        addLine(order(), lot, 1).andExpect(status().isConflict());
+
+        // Desbloquear se hace desde Produccion y exige ademas gestionar los lotes (por defecto, el ADMIN)
+        movement("OPERARIO", lot, "DESBLOQUEADO", 0).andExpect(status().isForbidden());
+        movement("ADMIN", lot, "DESBLOQUEADO", 0).andExpect(status().isCreated());
+        body(addLine(order(), lot, 1));
+    }
+
+    @Test
+    void productionOnlyAcceptsKnownMovements() throws Exception {
+        int lot = lot(10);
+        movement("ADMIN", lot, "LO_QUE_SEA", 1).andExpect(status().isBadRequest());
+        movement("ADMIN", lot, "EN_PRODUCCION", -500).andExpect(status().isBadRequest());
+        movement("ADMIN", lot, "DESBLOQUEADO", 0).andExpect(status().isBadRequest()); // no estaba bloqueado
+        movement("ADMIN", 999999, "EN_PRODUCCION", 1).andExpect(status().isNotFound());
     }
 
     @Test

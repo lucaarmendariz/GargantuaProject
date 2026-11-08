@@ -17,10 +17,12 @@ services:
     environment:
       # Desde el contenedor, la MariaDB del equipo se alcanza por host.docker.internal
       SPRING_DATASOURCE_URL: jdbc:mariadb://host.docker.internal:3307/traceability_lean
-      # Perfil dev: al arrancar (y al cambiar los scripts de database/) la base de datos se
-      # reinicia con los datos de prueba. Para conservar los datos: DEV_RESET_DB=false docker compose up -d
+      # Perfil dev. Con DEV_RESET_DB=true la base de datos se reinicia con los datos de prueba al
+      # arrancar y al cambiar los scripts de database/. Viene APAGADO: asi una instalacion de un
+      # cliente nunca borra sus datos. Para encenderlo en tu equipo: DEV_RESET_DB=true en el .env
+      # de la raiz del repositorio (no se sube a git).
       SPRING_PROFILES_ACTIVE: dev
-      APP_DEV_RESET_DB: ${DEV_RESET_DB:-true}
+      APP_DEV_RESET_DB: ${DEV_RESET_DB:-false}
       GRADLE_USER_HOME: /gradle
     extra_hosts:
       - "host.docker.internal:host-gateway"

@@ -210,7 +210,7 @@ const searchLot = async () => {
   } catch (err) {
     errorMsg.value = err?.status === 404
       ? 'El lote escaneado no existe o no tiene historial registrado.'
-      : 'No se pudo conectar con el servidor. Inténtalo de nuevo.';
+      : await errorMessage(err, 'No se pudo consultar el lote.');
   }
 };
 

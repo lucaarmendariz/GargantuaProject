@@ -50,11 +50,10 @@ public class ProductController {
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage()); // Código de barras mal escrito
         } catch (IllegalStateException e) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage()); // Código de barras de otro producto
-        } catch (SQLException | RuntimeException e) {
-            // Si el procedimiento lanza el error 102 (SKU duplicado), enviamos un HTTP 400 Bad Request
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("Error al registrar el producto: Comprueba que el código SKU no esté duplicado.");
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage()); // SKU o código de barras repetido
+        } catch (SQLException e) {
+            // Cualquier otro fallo de la BD no es culpa del usuario: no se le dice que revise el SKU
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("No se pudo registrar el producto.");
         }
     }
 

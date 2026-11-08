@@ -1,0 +1,4 @@
+# Configuracion local de cada equipo (p. ej. DEV_RESET_DB=true para docker compose)
+.env
+# Capturas y registros de Playwright
+.playwright-mcp/

@@ -3,10 +3,13 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import apiClient from '../api';
 import CameraScanner from '../components/CameraScanner.vue';
+import { errorMessage as describeError } from '../utils/errors';
 import { parseLabel } from '../utils/labelParser';
-import { getUser } from '../utils/session';
+import { can, getUser } from '../utils/session';
 
 const router = useRouter();
+// Levantar un bloqueo de calidad: solo quien gestiona los lotes (la API también lo exige)
+const canUnblock = can('LOTES', 'GESTIONAR');
 
 // Cámara: lee la etiqueta, busca el lote por su número y rellena el ID y el texto OCR
 const scannerOpen = ref(false);
@@ -62,7 +65,8 @@ const submitProductionLog = async () => {
     // Limpiar el formulario menos el operario
     lotId.value = ''; quantityAffected.value = ''; ocrRawText.value = ''; observations.value = ''; scannedLot.value = '';
   } catch (error) {
-    errorMessage.value = 'Error al registrar el movimiento. Verifica que el ID de lote sea válido.';
+    // Motivo de la API: lote inexistente, bloqueado por calidad, sin permiso para desbloquear...
+    errorMessage.value = await describeError(error, 'Error al registrar el movimiento.');
   }
 };
 </script>
@@ -94,6 +98,7 @@ const submitProductionLog = async () => {
               <option value="EN_PRODUCCION">EN PRODUCCIÓN (Cocinado/Giro)</option>
               <option value="BLOQUEADO">BLOQUEADO (Control de Calidad)</option>
               <option value="VENDIDO">VENDIDO (Salida de Almacén)</option>
+              <option v-if="canUnblock" value="DESBLOQUEADO">DESBLOQUEADO (Levantar el bloqueo de calidad)</option>
             </select>
           </div>
 

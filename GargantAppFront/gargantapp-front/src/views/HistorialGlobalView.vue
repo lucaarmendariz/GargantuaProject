@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import apiClient from '../api';
 import EventTimeline from '../components/EventTimeline.vue';
+import { errorMessage } from '../utils/errors';
 import { historyToTimeline } from '../utils/timeline';
 
 const lotIdInput = ref('');
@@ -22,7 +23,7 @@ const fetchHistory = async () => {
     historyLogs.value = [];
     errorMsg.value = error?.status === 404
       ? 'No existe ningún lote con este ID.'
-      : 'No se pudo conectar con el servidor. Inténtalo de nuevo.';
+      : await errorMessage(error, 'No se pudo cargar el historial.');
   }
   searchDone.value = true;
 };
