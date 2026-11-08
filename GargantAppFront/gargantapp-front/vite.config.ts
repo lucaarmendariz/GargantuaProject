@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath, URL } from 'node:url'
 
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
 import basicSsl from '@vitejs/plugin-basic-ssl'
@@ -16,7 +16,7 @@ const ownCertificate = https && existsSync(certFile) && existsSync(keyFile)
 const caFile = fileURLToPath(new URL('./certs/gargantua-ca.crt', import.meta.url))
 
 // /gargantua-ca.crt descarga la CA con el tipo que el iPhone reconoce como perfil instalable
-const caDownload = {
+const caDownload: Plugin = {
   name: 'gargantua-ca-download',
   configureServer(server) {
     server.middlewares.use('/gargantua-ca.crt', (_req, res) => {

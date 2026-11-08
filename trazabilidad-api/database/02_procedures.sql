@@ -387,6 +387,12 @@ BEGIN
     SET _newUserId = LAST_INSERT_ID();
 END;;
 
+-- Cambia la contraseña del propio usuario (la API ya ha comprobado la actual)
+CREATE OR REPLACE PROCEDURE `AppUser_SetPassword`(IN _username VARCHAR(50), IN _passwordHash VARCHAR(255))
+BEGIN
+    UPDATE app_user SET password_hash = _passwordHash WHERE username = _username AND is_active = 1;
+END;;
+
 -- Cambia rol y estado. Los usuarios SUPERADMIN no se tocan desde el panel del cliente.
 CREATE OR REPLACE PROCEDURE `AppUser_Update`(IN _userId INT, IN _role VARCHAR(50), IN _active TINYINT(1))
 BEGIN

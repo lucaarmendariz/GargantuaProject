@@ -12,8 +12,9 @@ Este repositorio contiene el backend y el frontend en el mismo lugar, pero **se 
 GargantuaProject/
 ├── trazabilidad-api/               Backend (API REST)
 │   └── database/                   Scripts SQL y update_db.sh
-└── GargantAppFront/
-    └── gargantapp-front/           Frontend (Vue)
+├── GargantAppFront/
+│   └── gargantapp-front/           Frontend (Vue)
+└── produccion/                     Instalación en un cliente: Docker, instalar.sh y backup.sh
 ```
 
 | Parte | Carpeta | Tecnología | IDE |
@@ -135,7 +136,9 @@ Permisos por defecto (los de antes de existir el panel): `ENCARGADO` gestiona Pe
 
 Usuario de prueba del proveedor (solo en la base de datos de desarrollo, `03_seeds.sql`): `superadmin` / `moncorp2026`.
 
-**Activar la cuenta del proveedor en una instalación real.** La migración `004` crea `superadmin` desactivado, porque la contraseña de prueba es pública. Genera el hash de una contraseña propia y actívalo, desde `trazabilidad-api/database`:
+Las instalaciones nuevas en clientes crean `superadmin` con tu contraseña desde `produccion/instalar.sh` (ver «Instalar en un cliente»). Cada usuario cambia su contraseña en **Mi contraseña** (cabecera del Panel Central).
+
+**Instalaciones antiguas actualizadas con la migración `004`.** La migración crea `superadmin` desactivado, porque la contraseña de prueba es pública. Genera el hash de una contraseña propia y actívalo, desde `trazabilidad-api/database`:
 
 ```bash
 # Hash BCrypt de la contraseña (htpasswd viene con Apache; también sirve cualquier generador BCrypt)
@@ -163,6 +166,50 @@ docker exec -i -e MYSQL_PWD="$DB_PASSWORD" trazabilidad_db mariadb -utrazabilida
 3. Abre la dirección que muestre la terminal (normalmente `http://localhost:5173`).
 
 > El frontend necesita que el backend esté en marcha. Si el navegador muestra errores de CORS, el backend debe permitir el origen del frontend.
+
+## Instalar en un cliente
+
+Cada cliente tiene su propia instalación: un servidor (en la nube o en la planta) con Docker. Todo lo necesario está en `produccion/`:
+
+| Fichero | Para qué |
+|---------|----------|
+| `docker-compose.yml` | Base de datos, API (compilada, **sin** el perfil `dev`: nunca borra datos) y web (Caddy: sirve la app, reenvía `/api` y saca el HTTPS) |
+| `instalar.sh` | Primera instalación y actualizaciones |
+| `backup.sh` | Copia de seguridad de la base de datos |
+| `.env.example` | Configuración del cliente (`instalar.sh` crea `.env` a partir de ella) |
+
+**1. Elegir dónde.** Lo más sencillo es un servidor pequeño en la nube y un dominio (`trazabilidad.cliente.com`) apuntando a él, con los puertos 80 y 443 abiertos: Caddy saca el certificado HTTPS de Let's Encrypt solo y la cámara funciona en cualquier móvil. Sin internet en la planta, usa un equipo de su red y su IP como dominio: Caddy usa su propia CA y cada móvil tiene que confiar en ella (el certificado raíz queda en el volumen `caddy_data`, en `pki/authorities/local/root.crt`).
+
+**2. Instalar.** En el servidor, con Docker y su plugin `compose`:
+
+```bash
+git clone https://github.com/lucarmendariz/GargantuaProject.git
+cd GargantuaProject/produccion
+./instalar.sh
+```
+
+Pregunta la dirección de la app, genera las contraseñas internas en `produccion/.env` (**guarda una copia de ese fichero**: sin él no se abre la base de datos), construye y arranca todo, y con la base de datos vacía pide:
+- tu contraseña de proveedor (usuario `superadmin`),
+- el usuario, el nombre y la contraseña del administrador del cliente.
+
+La base de datos empieza vacía: solo módulos, permisos por defecto y esos dos usuarios. Después, entra como `superadmin` en **Plataforma** y deja activos los módulos contratados; el administrador del cliente da de alta a su gente en **Administración**.
+
+**3. Copias de seguridad.** `instalar.sh` programa `backup.sh` a diario a las 03:00 (con `crontab`). Cada copia queda en `produccion/copias/` (se guardan `DIAS_COPIAS` días). Para guardar también una copia **fuera del servidor**, configura [rclone](https://rclone.org/) con un destino (otro servidor, S3, Google Drive…) y ponlo en `DESTINO_REMOTO` del `.env`. Restaurar una copia (sustituye los datos actuales):
+
+```bash
+cd produccion && set -a && source ./.env && set +a
+gunzip -c copias/gargantapp-AAAAMMDD-HHMM.sql.gz | docker compose exec -T -e MYSQL_PWD="$DB_ROOT_PASSWORD" db mariadb -uroot traceability_lean
+```
+
+**4. Actualizar a una versión nueva.**
+
+```bash
+cd GargantuaProject && git pull
+# Si la versión trae migraciones nuevas (trazabilidad-api/database/migrations), aplícalas antes
+cd produccion && ./instalar.sh
+```
+
+**Probar la instalación en tu equipo** (con el entorno de desarrollo arrancado, en otros puertos): `DOMINIO=:80` en `produccion/.env` y `PUERTO_HTTP=8088 ./instalar.sh`; la app queda en `http://localhost:8088`.
 
 ## Pedidos y stock
 

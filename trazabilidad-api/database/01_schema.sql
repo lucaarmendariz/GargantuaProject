@@ -137,3 +137,20 @@ CREATE TABLE order_event (
          CONSTRAINT fk_event_order FOREIGN KEY (order_id) REFERENCES customer_order (order_id),
          CONSTRAINT fk_event_lot FOREIGN KEY (lot_id) REFERENCES product_lot (lot_id)
 ) ENGINE=InnoDB;
+
+-- =================================================================
+-- 3. DATOS BASE: MODULOS Y PERMISOS POR ROL (imprescindibles, tambien en produccion)
+-- =================================================================
+-- Todos los modulos activos. Permisos por defecto de cada rol; el ADMIN del cliente los cambia en Administracion.
+INSERT INTO app_module (module_code, name, sort_order) VALUES
+       ('PEDIDOS', 'Pedidos', 1),
+       ('INVENTARIO', 'Inventario', 2),
+       ('LOTES', 'Gestión de lotes', 3),
+       ('HISTORIAL', 'Historial de auditoría', 4),
+       ('PRODUCCION', 'Producción en planta', 5);
+
+INSERT INTO role_permission (role, module_code, access) VALUES
+       ('ENCARGADO', 'PEDIDOS', 'GESTIONAR'), ('ENCARGADO', 'INVENTARIO', 'GESTIONAR'), ('ENCARGADO', 'LOTES', 'GESTIONAR'),
+       ('ENCARGADO', 'HISTORIAL', 'NINGUNO'), ('ENCARGADO', 'PRODUCCION', 'NINGUNO'),
+       ('OPERARIO', 'PEDIDOS', 'VER'), ('OPERARIO', 'INVENTARIO', 'NINGUNO'), ('OPERARIO', 'LOTES', 'NINGUNO'),
+       ('OPERARIO', 'HISTORIAL', 'NINGUNO'), ('OPERARIO', 'PRODUCCION', 'VER');

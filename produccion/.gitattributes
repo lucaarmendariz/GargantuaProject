@@ -1,0 +1,2 @@
+# Los scripts se ejecutan con bash en Linux: con finales de linea de Windows fallan
+*.sh text eol=lf

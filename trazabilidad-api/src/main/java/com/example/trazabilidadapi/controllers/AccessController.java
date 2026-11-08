@@ -36,6 +36,13 @@ public class AccessController {
         return service.forUser(jwt.getSubject());
     }
 
+    /** Cambiar la propia contraseña: {"actual": "...", "nueva": "..."} */
+    @PutMapping("/me/password")
+    public ResponseEntity<Void> changePassword(@AuthenticationPrincipal Jwt jwt, @RequestBody Map<String, String> body) {
+        service.changePassword(jwt.getSubject(), body.get("actual"), body.get("nueva"));
+        return ResponseEntity.noContent().build();
+    }
+
     // --- Panel del proveedor ---
 
     @GetMapping("/plataforma/modulos")

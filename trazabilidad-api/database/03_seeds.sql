@@ -42,19 +42,3 @@ VALUES ('luca', '$2a$10$A8ZBNb2G/0/Y4Lv1Ygw8iejFWQ.M5A3UPrxl5I2clCaCyyvhSL8s6', 
        -- Proveedor de la app: activa los modulos contratados (misma contraseña de prueba)
        ('superadmin', '$2a$10$A8ZBNb2G/0/Y4Lv1Ygw8iejFWQ.M5A3UPrxl5I2clCaCyyvhSL8s6', 'Gargantua (proveedor)', 'SUPERADMIN', 1);
 
--- =================================================================
--- 5. SEED: MODULOS Y PERMISOS POR ROL
--- =================================================================
--- Todos los modulos activos. Los permisos repiten lo que cada rol podia hacer antes.
-INSERT INTO app_module (module_code, name, sort_order) VALUES
-       ('PEDIDOS', 'Pedidos', 1),
-       ('INVENTARIO', 'Inventario', 2),
-       ('LOTES', 'Gestión de lotes', 3),
-       ('HISTORIAL', 'Historial de auditoría', 4),
-       ('PRODUCCION', 'Producción en planta', 5);
-
-INSERT INTO role_permission (role, module_code, access) VALUES
-       ('ENCARGADO', 'PEDIDOS', 'GESTIONAR'), ('ENCARGADO', 'INVENTARIO', 'GESTIONAR'), ('ENCARGADO', 'LOTES', 'GESTIONAR'),
-       ('ENCARGADO', 'HISTORIAL', 'NINGUNO'), ('ENCARGADO', 'PRODUCCION', 'NINGUNO'),
-       ('OPERARIO', 'PEDIDOS', 'VER'), ('OPERARIO', 'INVENTARIO', 'NINGUNO'), ('OPERARIO', 'LOTES', 'NINGUNO'),
-       ('OPERARIO', 'HISTORIAL', 'NINGUNO'), ('OPERARIO', 'PRODUCCION', 'VER');
