@@ -7,6 +7,7 @@ import { dayRange, formatDayLong, formatEpochDate, formatEpochDateTime, isExpire
 import { errorMessage } from '../utils/errors';
 import { loadLayout, moveItem, resetLayout, saveLayout } from '../utils/dashboardLayout';
 import ModuleIcon from '../components/ModuleIcon.vue';
+import UserAvatar from '../components/UserAvatar.vue';
 import CameraScanner from '../components/CameraScanner.vue';
 import { parseLabel } from '../utils/labelParser';
 
@@ -28,6 +29,15 @@ const seesOrders = can('PEDIDOS');
 
 // El guardián del router ya garantiza que hay sesión
 const user = getUser();
+// La foto no viaja en la sesión (puede pesar): se pide aparte para la cabecera
+const avatar = ref(null);
+onMounted(async () => {
+  try {
+    avatar.value = (await apiClient.get('/me/perfil')).avatar;
+  } catch {
+    // Sin foto: se ven las iniciales
+  }
+});
 const lotInput = ref('');
 const lotData = ref(null);
 const errorMsg = ref('');
@@ -242,8 +252,10 @@ const logout = () => {
         <p>Planta Gargantúa Tortillas</p>
       </div>
       <div class="user-badge">
-        <strong>{{ user.name }}</strong>
-        <button @click="router.push('/cuenta')" class="btn-logout">Mi contraseña</button>
+        <button @click="router.push('/cuenta')" class="profile-link" title="Mi perfil" aria-label="Mi perfil">
+          <UserAvatar :src="avatar" :name="user.name" :size="34" />
+          <strong>{{ user.name }}</strong>
+        </button>
         <button @click="logout" class="btn-logout">Salir</button>
       </div>
     </header>
@@ -438,6 +450,25 @@ const logout = () => {
   align-items: center;
   gap: 8px 16px;
   min-width: 0;
+}
+
+/* El nombre del usuario conectado abre Mi perfil */
+.profile-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--control-height);
+  padding: 4px 12px 4px 4px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  color: inherit;
+}
+
+.profile-link:hover,
+.profile-link:focus-visible {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--gargantua-gold);
 }
 
 .btn-logout {

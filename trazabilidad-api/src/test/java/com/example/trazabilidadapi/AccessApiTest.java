@@ -168,6 +168,49 @@ class AccessApiTest extends IntegrationTestBase {
     }
 
     @Test
+    void eachUserEditsHisNameAndPhoto() throws Exception {
+        mvc.perform(as("ADMIN", post("/api/admin/usuarios"))
+                        .content("{\"username\":\"con_foto\",\"name\":\"Antes\",\"role\":\"OPERARIO\",\"password\":\"inicial-123\"}"))
+                .andExpect(status().isCreated());
+        String token = "Bearer " + JsonPath.read(login("con_foto", "inicial-123"), "$.token");
+        mvc.perform(withToken(token, get("/api/me/perfil")))
+                .andExpect(jsonPath("$.name").value("Antes"))
+                .andExpect(jsonPath("$.role").value("OPERARIO"))
+                .andExpect(jsonPath("$.avatar").doesNotExist());
+
+        String photo = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==";
+        String saved = mvc.perform(withToken(token, put("/api/me/perfil"))
+                        .content("{\"name\":\"  Despues  \",\"avatar\":\"" + photo + "\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.perfil.name").value("Despues"))
+                .andExpect(jsonPath("$.perfil.avatar").value(photo))
+                .andReturn().getResponse().getContentAsString();
+
+        // El token nuevo lleva el nombre nuevo: es el que firma pedidos y movimientos
+        String newToken = JsonPath.read(saved, "$.token");
+        String payload = new String(java.util.Base64.getUrlDecoder().decode(newToken.split("\\.")[1]));
+        assertThat(payload).contains("\"name\":\"Despues\"");
+
+        // Quitar la foto
+        mvc.perform(withToken(token, put("/api/me/perfil")).content("{\"name\":\"Despues\",\"avatar\":null}"))
+                .andExpect(jsonPath("$.perfil.avatar").doesNotExist());
+    }
+
+    @Test
+    void theProfileRejectsDangerousOrHugePhotosAndEmptyNames() throws Exception {
+        String token = bearer("OPERARIO");
+        String body = "{\"name\":\"%s\",\"avatar\":\"%s\"}";
+        mvc.perform(withToken(token, put("/api/me/perfil")).content(body.formatted("Ok", "data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=")))
+                .andExpect(status().isBadRequest());
+        mvc.perform(withToken(token, put("/api/me/perfil")).content(body.formatted("Ok", "javascript:alert(1)")))
+                .andExpect(status().isBadRequest());
+        mvc.perform(withToken(token, put("/api/me/perfil")).content(body.formatted("Ok", "data:image/png;base64," + "A".repeat(300_000))))
+                .andExpect(status().isBadRequest());
+        mvc.perform(withToken(token, put("/api/me/perfil")).content("{\"name\":\"   \",\"avatar\":null}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void theAdminCannotLockHimselfOut() throws Exception {
         String token = bearer("ADMIN");
         int id = jdbc.queryForObject("SELECT user_id FROM app_user WHERE username = 'test_admin'", Integer.class);

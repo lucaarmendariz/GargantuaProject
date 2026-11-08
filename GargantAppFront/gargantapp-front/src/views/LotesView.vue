@@ -2,6 +2,7 @@
 import { onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import apiClient from '../api';
+import { askConfirm } from '../utils/confirm';
 import TabMenu from '../components/TabMenu.vue';
 import { useAction } from '../composables/useAction';
 import { useTabRoute } from '../composables/useTabRoute';
@@ -113,8 +114,14 @@ const saveEdit = (lot) => run(async () => {
   editingLotId.value = null;
 }, `Lote ${lot.lotNumber} actualizado correctamente.`, 'No se pudo actualizar el lote.');
 
-const deleteLot = (lot) => {
-  if (!confirm(`¿Eliminar definitivamente el lote ${lot.lotNumber}? Esta acción no se puede deshacer.`)) return;
+const deleteLot = async (lot) => {
+  const ok = await askConfirm({
+    title: `¿Dar de baja el lote ${lot.lotNumber}?`,
+    message: 'Se elimina definitivamente, junto con su historial de movimientos. Esta acción no se puede deshacer.',
+    confirmText: 'Dar de baja el lote',
+    danger: true,
+  });
+  if (!ok) return;
   run(() => apiClient.delete(`/lotes/${lot.lotId}`), `Lote ${lot.lotNumber} eliminado.`, 'No se pudo eliminar el lote.');
 };
 

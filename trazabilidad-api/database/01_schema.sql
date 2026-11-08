@@ -87,6 +87,7 @@ CREATE TABLE app_user (
           username VARCHAR(50) UNIQUE NOT NULL,
           password_hash VARCHAR(255) NOT NULL, -- Guardaremos las contraseñas cifradas
           name VARCHAR(100) NOT NULL,
+          avatar MEDIUMTEXT DEFAULT NULL, -- Foto de perfil como data URL (JPEG/PNG/WebP), la sube el propio usuario
           role VARCHAR(50) NOT NULL DEFAULT 'OPERARIO', -- OPERARIO, ENCARGADO, ADMIN (del cliente), SUPERADMIN (proveedor de la app)
           is_active TINYINT(1) DEFAULT 1 NOT NULL,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

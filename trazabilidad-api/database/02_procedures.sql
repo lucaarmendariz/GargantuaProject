@@ -387,6 +387,19 @@ BEGIN
     SET _newUserId = LAST_INSERT_ID();
 END;;
 
+-- Perfil del propio usuario (sin la contraseña)
+CREATE OR REPLACE PROCEDURE `AppUser_GetProfile`(IN _username VARCHAR(50))
+BEGIN
+    SELECT username, name, role, avatar, UNIX_TIMESTAMP(created_at) AS created_at
+    FROM app_user WHERE username = _username AND is_active = 1;
+END;;
+
+-- El propio usuario cambia su nombre y su foto (la API ya los ha validado; foto NULL = sin foto)
+CREATE OR REPLACE PROCEDURE `AppUser_UpdateProfile`(IN _username VARCHAR(50), IN _name VARCHAR(100), IN _avatar MEDIUMTEXT)
+BEGIN
+    UPDATE app_user SET name = _name, avatar = _avatar WHERE username = _username AND is_active = 1;
+END;;
+
 -- Cambia la contraseña del propio usuario (la API ya ha comprobado la actual)
 CREATE OR REPLACE PROCEDURE `AppUser_SetPassword`(IN _username VARCHAR(50), IN _passwordHash VARCHAR(255))
 BEGIN
